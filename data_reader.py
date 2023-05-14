@@ -67,9 +67,69 @@ for col in gigatest.columns:
     print(gigatest[col].head())
     print()
 
+# in some texts there are still some attributes (Archive-name, Version, etc.), it may be removed
 print(gigatest.loc[0,'Text'][0:1000])
 print(gigatest.loc[1,'Text'][0:1000])
 print(gigatest.loc[2000,'Text'][0:1000])
 
+
+#%% detecting language of texts
+
+
+from langdetect import detect
+import numpy as np
+
+# example
+lang = detect("Ein, zwei, drei, vier")
+print(lang)
+
+
+def detect_language(t):
+    try:
+        return detect(t)
+    except:
+        return np.NaN
+
+gigatest['Language'] = gigatest['Text'].apply(lambda t: detect_language(t))
+
+i=0
+for t in gigatest['Text']:
+    try:
+        detect(t)
+    except:
+        np.NaN
+
+# in such places there are problems, an exception is thrown
+gigatest.loc[869,'Text']
+
+#%%
+
+gigatest.info()
+# mostly english but not only
+gigatest['Language'].value_counts()
+
+# nothing here
+gigatest.loc[gigatest['Language'] == np.NaN, 'Language']
+
+
+idx = gigatest.loc[gigatest['Language'] == 'de', 'Language'].index
+
+# rows with german texts
+gigatest.loc[idx, 'Text']
+
+for t in gigatest.loc[idx, 'Text']:
+    print('TEXT_START')
+    print(t)
+    print('TEXT_END')
+    print()
+    
+
+# most of these texts are strange
+gigatest.loc[idx[0], 'Text']
+gigatest.loc[idx[1], 'Text']
+
+gigatest.loc[idx[13], 'Text']
+
+# the texts need cleaning, maybe it will remove anomalies
 
 
