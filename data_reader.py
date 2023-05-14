@@ -1,4 +1,4 @@
-# import pandas as pd
+#%% import pandas as pd
 
 def read_data():
     
@@ -8,6 +8,7 @@ def read_data():
 
     data = []
     path = '20_newsgroups'
+
 
     # Use os.walk() to iterate through directories and files
     for root, dirs, files in os.walk(path):
@@ -27,6 +28,8 @@ def read_data():
                 Organization = re.search(r"Organization: (.*)", content)
                 Lines = re.search(r"Lines: (\d+)", content)
                 Date = re.search(r"Date: (.*)", content)
+                Directory = root[14:] # we remove '20_newsgroups\'
+                File = file
 
                 # Store the extracted information and the text after the first blank line in a dictionary
                 record = {
@@ -35,6 +38,8 @@ def read_data():
                     'Organization': Organization.group(1) if Organization else '',
                     'Lines': int(Lines.group(1)) if Lines else 0,
                     'Date': Date.group(1) if Date else '',
+                    'Directory': Directory,
+                    'File': File,
                     'Text': ''.join(lines[first_blank_line_index + 1:]).strip()
                 }
 
@@ -42,10 +47,29 @@ def read_data():
                 data.append(record)
 
     # Create the DataFrame using the data list
-    df = pd.DataFrame(data, columns=['From', 'Subject', 'Organization', 'Lines', 'Date', 'Text'])
+    df = pd.DataFrame(data, columns=['From', 'Subject', 'Organization', 'Lines', 'Date', 'Directory', 'File', 'Text'])
     
     return df
 
-#%%
+#%% parsing files to gain the data
 
 gigatest = read_data()
+
+
+#%% insight into data
+
+type(gigatest)
+gigatest.shape
+gigatest.columns
+
+for col in gigatest.columns:
+    print("Column name: " + col)
+    print(gigatest[col].head())
+    print()
+
+print(gigatest.loc[0,'Text'][0:1000])
+print(gigatest.loc[1,'Text'][0:1000])
+print(gigatest.loc[2000,'Text'][0:1000])
+
+
+
