@@ -88,7 +88,7 @@ def detect_language(t):
     try:
         return detect(t)
     except:
-        return np.NaN
+        return 'other'
 
 gigatest['Language'] = gigatest['Text'].apply(lambda t: detect_language(t))
 
@@ -131,5 +131,42 @@ gigatest.loc[idx[1], 'Text']
 gigatest.loc[idx[13], 'Text']
 
 # the texts need cleaning, maybe it will remove anomalies
+
+
+#%% word tokenization
+
+from nltk.tokenize import word_tokenize
+import re
+import copy
+
+texts = copy.deepcopy(gigatest['Text'])
+
+word_tokenize(texts[0]) # too many punctuation marks
+word_tokenize('pw@pw.pl') # does not recognize e-mails
+
+# finds words, numbers and emails
+pattern = '([a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$|\d+|\w+)'
+
+re.findall(pattern, texts[0])
+re.findall(pattern, 'pw@pw.pl') # finds emails now 
+
+texts_tokenized = [re.findall(pattern, text.lower()) for text in texts]
+
+texts_tokenized.apply(lambda t: detect_language(t))
+
+# example
+words = ['this', 'is', 'a', 'sentence']
+' '.join(words)
+
+# testing languages again
+languages = [detect_language(' '.join(text)) for text in texts_tokenized]
+
+
+df_lang = pd.DataFrame({'Language': languages})
+df_lang.value_counts()
+
+df_lang.loc[df_lang['Language'] != 'en', :]
+
+
 
 
