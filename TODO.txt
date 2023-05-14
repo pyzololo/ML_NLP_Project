@@ -1,0 +1,6 @@
+1. modify time to have only one time zone
+2. split the data into 3 sets (to have different time in each one)
+3. tokenize words in texts, removing unnecessary marks like !@#$%
+4. check languages once again and remove stop words (for each language or translate everything into english)
+5. vectorize texts by word counts
+6. create models (K-means, SVM, ...)
