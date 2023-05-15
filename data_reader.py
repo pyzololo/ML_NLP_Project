@@ -1,10 +1,14 @@
-#%% import pandas as pd
+#%% imports
+
+import pandas as pd
+import re
+
+
+#%% reading data
 
 def read_data():
     
     import os
-    import re
-    import pandas as pd
 
     data = []
     path = '20_newsgroups'
@@ -73,6 +77,16 @@ print(gigatest.loc[1,'Text'][0:1000])
 print(gigatest.loc[2000,'Text'][0:1000])
 
 
+#%% modifying time to one timezone
+
+
+
+
+#%% splitting data
+
+from sklearn.model_selection import train_test_split
+
+
 #%% detecting language of texts
 
 
@@ -92,17 +106,10 @@ def detect_language(t):
 
 gigatest['Language'] = gigatest['Text'].apply(lambda t: detect_language(t))
 
-i=0
-for t in gigatest['Text']:
-    try:
-        detect(t)
-    except:
-        np.NaN
-
 # in such places there are problems, an exception is thrown
 gigatest.loc[869,'Text']
 
-#%%
+#%% analyzing languages
 
 gigatest.info()
 # mostly english but not only
@@ -136,7 +143,6 @@ gigatest.loc[idx[13], 'Text']
 #%% word tokenization
 
 from nltk.tokenize import word_tokenize
-import re
 import copy
 
 texts = copy.deepcopy(gigatest['Text'])
@@ -150,23 +156,70 @@ pattern = '([a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$|\d+|\w+)'
 re.findall(pattern, texts[0])
 re.findall(pattern, 'pw@pw.pl') # finds emails now 
 
-texts_tokenized = [re.findall(pattern, text.lower()) for text in texts]
+# in both cases results are similar
+#texts_tokenized = [re.findall(pattern, text.lower()) for text in texts]
+texts_tokenized = [word_tokenize(text.lower()) for text in texts ]
+alpha_texts_tokenized = [[word for word in text if word.isalpha()] for text in texts_tokenized]
 
-texts_tokenized.apply(lambda t: detect_language(t))
 
 # example
 words = ['this', 'is', 'a', 'sentence']
 ' '.join(words)
 
 # testing languages again
-languages = [detect_language(' '.join(text)) for text in texts_tokenized]
-
+languages = [detect_language(' '.join(text)) for text in alpha_texts_tokenized]
 
 df_lang = pd.DataFrame({'Language': languages})
 df_lang.value_counts()
 
-df_lang.loc[df_lang['Language'] != 'en', :]
+# mostly empty texts, no words
+gigatest.loc[df_lang['Language'] == 'other', 'Text']
+
+
+# inspecting languages
+
+# 77 non english texts
+gigatest.loc[(df_lang['Language'] != 'other') & (df_lang['Language'] != 'en'), 'Text'].shape
+        
+def print_texsts(texts, start, stop):
+    indexes = texts.index
+    for i in range(start, stop):
+            print("TEXT " + str(start))
+            print(texts[indexes[i]])
+            print("END " + str(start))
+            print(indexes[start])
+            print()
+            start += 1
+            
+# these texts are in english too
+print_texsts(gigatest.loc[(df_lang['Language'] != 'other') & (df_lang['Language'] != 'en'), 'Text'], 0, 3)   
+
+# but this text is in german
+print_texsts(gigatest.loc[df_lang['Language'] == 'de', 'Text'], 0, 1)
+
+# there are problems with such texts
+gigatest.loc[2543, 'Text']
+
+# tokens of problematic text
+texts_tokenized[2543]
+len(texts_tokenized[2543])
+
+# using only letters helps
+alpha_texts_tokenized[2543]
+len(alpha_texts_tokenized[2543])
+
+#%% removing stop words
+
+from nltk.corpus import stopwords
+
+# here englisg stopwords, but it will not always work properly
+texts_tokenized_without_stopwords = [[word for word in text if word not in stopwords.words('english')] for text in alpha_texts_tokenized]
+
+
+#%% lemmatizing tokens - using simple forms
 
 
 
+#%% vectorization - adding columns for words
 
+from sklearn.feature_extraction.text import CountVectorizer
