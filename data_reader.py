@@ -208,12 +208,34 @@ len(texts_tokenized[2543])
 alpha_texts_tokenized[2543]
 len(alpha_texts_tokenized[2543])
 
+
 #%% removing stop words
 
 from nltk.corpus import stopwords
 
 # here englisg stopwords, but it will not always work properly
 texts_tokenized_without_stopwords = [[word for word in text if word not in stopwords.words('english')] for text in alpha_texts_tokenized]
+
+
+#%% saving list
+
+def saveList(myList,filename):
+    # the filename should mention the extension 'npy'
+    np.save(filename,myList)
+    print("Saved successfully!")
+    
+# needs to be saved as np.array
+saveList(np.array(texts_tokenized_without_stopwords), "texts_tokenized_without_stopwords.npy")
+    
+#%% loading list
+
+def loadList(filename):
+    # the filename should mention the extension 'npy'
+    tempNumpyArray=np.load(filename, allow_pickle=True)
+    return tempNumpyArray.tolist()
+
+# loading results
+loadList("texts_tokenized_without_stopwords.npy")
 
 
 #%% lemmatizing tokens - using simple forms
