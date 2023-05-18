@@ -79,9 +79,79 @@ print(gigatest.loc[2000,'Text'][0:1000])
 
 #%% modifying time to one timezone
 
+# raw GPT code
 
+from datetime import datetime
+import pytz
 
+# Przykładowy rekord daty
+date_str = "Mon, 5 Apr 1993 21:02:33 GMT"
 
+# Konwertowanie na obiekt datetime
+date_obj = datetime.strptime(date_str, "%a, %d %b %Y %H:%M:%S %Z")
+
+# Dostosowanie do strefy czasowej
+timezone = pytz.timezone("Europe/London")  # Wybierz odpowiednią strefę czasową
+normalized_date = date_obj.astimezone(timezone)
+
+print(normalized_date)
+
+#%%
+
+from datetime import datetime
+from dateutil import parser
+import pytz
+
+# Przykładowy rekord daty
+date_str = "Mon, 5 Apr 1993 20:15:34 -0400"
+
+# Konwertowanie na obiekt datetime
+date_obj = parser.parse(date_str)
+
+# Dostosowanie do strefy czasowej
+timezone = pytz.timezone("Europe/london")  # Wybierz odpowiednią strefę czasową
+normalized_date = date_obj.astimezone(timezone)
+
+print(normalized_date)
+
+#%%
+
+# def normalize_date(date):
+#     match = re.search(r"[A-Z]{3}", date)
+    
+#     date_obj = None
+    
+#     if match:
+#         date_obj = datetime.strptime(date, "%a, %d %b %Y %H:%M:%S %Z")    
+#     else:
+#         date_obj = parser.parse(date)
+#     timezone = pytz.timezone("Europe/london")  # Wybierz odpowiednią strefę czasową
+#     normalized_date = date_obj.astimezone(timezone)
+#     return normalized_date
+        
+
+def normalize_date(date):
+    match = re.search(r"[A-Z]{3}", date)
+    date_obj = None
+    
+    if match:
+        try:
+            date_obj = datetime.strptime(date, "%a, %d %b %Y %H:%M:%S %Z")
+        except ValueError:
+            date_obj = parser.parse(date)
+    else:
+        date_obj = parser.parse(date)
+    
+    timezone = pytz.timezone("Europe/London")  # Wybierz odpowiednią strefę czasową
+    normalized_date = date_obj.astimezone(timezone)
+    return normalized_date
+    
+#%%
+
+# does not work yet
+gigatest['Date'].apply(lambda date: normalize_date(date))
+
+################################
 #%% splitting data
 
 from sklearn.model_selection import train_test_split
@@ -116,7 +186,7 @@ gigatest.info()
 gigatest['Language'].value_counts()
 
 # nothing here
-gigatest.loc[gigatest['Language'] == np.NaN, 'Language']
+gigatest.loc[gigatest['Language'] == 'other', 'Language']
 
 
 idx = gigatest.loc[gigatest['Language'] == 'de', 'Language'].index
@@ -135,10 +205,24 @@ for t in gigatest.loc[idx, 'Text']:
 gigatest.loc[idx[0], 'Text']
 gigatest.loc[idx[1], 'Text']
 
+idx[0]
 gigatest.loc[idx[13], 'Text']
 
 # the texts need cleaning, maybe it will remove anomalies
 
+# 2542     comp.os.ms-windows.misc
+# 2544     comp.os.ms-windows.misc
+# 2979     comp.os.ms-windows.misc
+# 2980     comp.os.ms-windows.misc
+# 2982     comp.os.ms-windows.misc
+# 2984     comp.os.ms-windows.misc
+# 2986     comp.os.ms-windows.misc
+# 6777                misc.forsale
+# 9738          rec.sport.baseball
+# 10004           rec.sport.hockey
+# 10271           rec.sport.hockey
+# 11012                  sci.crypt
+# 16342         talk.politics.guns
 
 #%% word tokenization
 
@@ -158,7 +242,13 @@ re.findall(pattern, 'pw@pw.pl') # finds emails now
 
 # in both cases results are similar
 #texts_tokenized = [re.findall(pattern, text.lower()) for text in texts]
-texts_tokenized = [word_tokenize(text.lower()) for text in texts ]
+texts_tokenized = [word_tokenize(text.lower()) for text in texts]
+texts_tokenized[idx[0]]
+
+# before the numbers and special marks are removed, it would be nice to get some statistics from them ...
+
+
+# getting only alphabetic marks
 alpha_texts_tokenized = [[word for word in text if word.isalpha()] for text in texts_tokenized]
 
 
@@ -192,7 +282,7 @@ def print_texsts(texts, start, stop):
             start += 1
             
 # these texts are in english too
-print_texsts(gigatest.loc[(df_lang['Language'] != 'other') & (df_lang['Language'] != 'en'), 'Text'], 0, 3)   
+print_texsts(gigatest.loc[(df_lang['Language'] != 'other') & (df_lang['Language'] != 'en'), 'Text'], 0, 2)   
 
 # but this text is in german
 print_texsts(gigatest.loc[df_lang['Language'] == 'de', 'Text'], 0, 1)
@@ -209,11 +299,13 @@ alpha_texts_tokenized[2543]
 len(alpha_texts_tokenized[2543])
 
 
+# translation?
+
 #%% removing stop words
 
 from nltk.corpus import stopwords
 
-# here englisg stopwords, but it will not always work properly
+# here english stopwords, but it will not always work properly
 texts_tokenized_without_stopwords = [[word for word in text if word not in stopwords.words('english')] for text in alpha_texts_tokenized]
 
 
