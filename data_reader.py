@@ -4,7 +4,7 @@ import pandas as pd
 import re
 
 
-#%% reading data
+#%% reading data [UPDATED]
 
 def read_data():
     
@@ -24,7 +24,8 @@ def read_data():
                 first_blank_line_index = next((i for i, line in enumerate(lines) if line.strip() == ''), None)
 
                 # Extract header content
-                content = ''.join(lines[:first_blank_line_index])
+                # content = ''.join(lines[:first_blank_line_index]) ###########
+                content = ''.join(lines[:])
 
                 # Use regular expressions to extract header information
                 From = re.search(r"From: (.*)", content)
@@ -57,8 +58,9 @@ def read_data():
 
 #%% parsing files to gain the data
 
-gigatest = read_data()
+# works a bit slower now, but still within 1 minute
 
+gigatest = read_data()
 
 #%% insight into data
 
@@ -77,84 +79,149 @@ print(gigatest.loc[1,'Text'][0:1000])
 print(gigatest.loc[2000,'Text'][0:1000])
 
 
-#%% modifying time to one timezone
+#%% normalize date including timezone
 
-# raw GPT code
-
-from datetime import datetime
+import re
+from datetime import datetime, timedelta
+from dateutil import parser, tz
 import pytz
 
-# Przykładowy rekord daty
-date_str = "Mon, 5 Apr 1993 21:02:33 GMT"
-
-# Konwertowanie na obiekt datetime
-date_obj = datetime.strptime(date_str, "%a, %d %b %Y %H:%M:%S %Z")
-
-# Dostosowanie do strefy czasowej
-timezone = pytz.timezone("Europe/London")  # Wybierz odpowiednią strefę czasową
-normalized_date = date_obj.astimezone(timezone)
-
-print(normalized_date)
-
-#%%
-
-from datetime import datetime
-from dateutil import parser
-import pytz
-
-# Przykładowy rekord daty
-date_str = "Mon, 5 Apr 1993 20:15:34 -0400"
-
-# Konwertowanie na obiekt datetime
-date_obj = parser.parse(date_str)
-
-# Dostosowanie do strefy czasowej
-timezone = pytz.timezone("Europe/london")  # Wybierz odpowiednią strefę czasową
-normalized_date = date_obj.astimezone(timezone)
-
-print(normalized_date)
-
-#%%
-
-# def normalize_date(date):
-#     match = re.search(r"[A-Z]{3}", date)
+def normalize_datetime(date):
+    if not date:  # Sprawdzenie, czy podany argument jest pusty
+        return None
     
-#     date_obj = None
-    
-#     if match:
-#         date_obj = datetime.strptime(date, "%a, %d %b %Y %H:%M:%S %Z")    
-#     else:
-#         date_obj = parser.parse(date)
-#     timezone = pytz.timezone("Europe/london")  # Wybierz odpowiednią strefę czasową
-#     normalized_date = date_obj.astimezone(timezone)
-#     return normalized_date
-        
-
-def normalize_date(date):
     match = re.search(r"[A-Z]{3}", date)
     date_obj = None
+    
+    tzinfos = {"IDT": tz.tzoffset(None, 3*60*60),
+               "ACST": tz.tzoffset(None, 9*60*60),
+               "KST": tz.tzoffset(None, 9*60*60),
+               "UT": tz.tzoffset(None, 0),
+               "NZST": tz.tzoffset(None, 12*60*60),
+               "ECT": tz.tzoffset(None, 1*60*60),
+               "PST": tz.tzoffset(None, -8*60*60),
+               "CDT": tz.tzoffset(None, -5*60*60),
+               "MST": tz.tzoffset(None, -7*60*60),
+               "BST": tz.tzoffset(None, 1*60*60),
+               "EDT": tz.tzoffset(None, -4*60*60),
+               "CST": tz.tzoffset(None, -6*60*60),
+               "EST": tz.tzoffset(None, -5*60*60),
+               "MDT": tz.tzoffset(None, -6*60*60),
+               "CET": tz.tzoffset(None, 1*60*60),
+               "PDT": tz.tzoffset(None, -7*60*60),
+               "MET": tz.tzoffset(None, 1*60*60),
+               "MEZ": tz.tzoffset(None, 1*60*60),
+               "TUR": tz.tzoffset(None, 3*60*60)}
     
     if match:
         try:
             date_obj = datetime.strptime(date, "%a, %d %b %Y %H:%M:%S %Z")
         except ValueError:
-            date_obj = parser.parse(date)
+            try:
+                date_obj = parser.parse(date, fuzzy=True, tzinfos=tzinfos)
+            except parser.ParserError:
+                raise ValueError("Unknown date format: %s" % date)
     else:
-        date_obj = parser.parse(date)
+        try:
+            date_obj = parser.parse(date, fuzzy=True, tzinfos=tzinfos)
+        except parser.ParserError:
+            raise ValueError("Unknown date format: %s" % date)
+    
+    # Przetwarzanie daty bez użycia strefy czasowej
+    normalized_date = date_obj.replace(tzinfo=None)
     
     timezone = pytz.timezone("Europe/London")  # Wybierz odpowiednią strefę czasową
-    normalized_date = date_obj.astimezone(timezone)
-    return normalized_date
+    normalized_date = timezone.localize(normalized_date)
     
-#%%
+    return normalized_date
 
-# does not work yet
-gigatest['Date'].apply(lambda date: normalize_date(date))
+#%% just normalize date format, does not change timezone
 
-################################
+def normalize_date(date):
+    if not date:  # Check if the input argument is empty
+        return None
+    
+    match = re.search(r"[A-Z]{3}", date)
+    date_obj = None
+
+    if match:
+        try:
+            date_obj = datetime.strptime(date, "%a, %d %b %Y %H:%M:%S %Z")
+        except ValueError:
+            try:
+                date_obj = parser.parse(date, fuzzy=True)
+            except parser.ParserError:
+                raise ValueError("Unknown date format: %s" % date)
+    else:
+        try:
+            date_obj = parser.parse(date, fuzzy=True)
+        except parser.ParserError:
+            raise ValueError("Unknown date format: %s" % date)
+    
+    return date_obj
+
+#%% adding NormalizedDate column in order to sort data before splitting train-test
+
+gigatest['NormalizedDate'] = gigatest['Date'].apply(lambda date: normalize_datetime(date))
+gigatest['Date'] = gigatest['Date'].apply(lambda date: normalize_date(date))
+
+## NOTE
+# it turns out that function that is supposed to change the time including
+# time zone chuja robi, the time remains the same with, and without including 
+# time zone. pierdole to. it is not that important now
+
+#%% 8 records with no date [READ AND DELETE]
+
+## NOTE
+# this block is now irrrelevant since its all OK now
+# you can read this block if you want and delete
+
+
+gigatest[gigatest['NormalizedDate'].isna()]
+
+null_date_index = gigatest[gigatest['NormalizedDate'].isna()].index
+
+gigatest['Lines'].loc[null_date_index]
+
+# all of these have 'Lines' value of 0
+
+sus_records = gigatest.loc[null_date_index]
+
+for index in null_date_index:
+    print("\n============================ NEXT FILE ============================\n")
+    print(gigatest['Text'].loc[index])
+
+# it turns out, that these records are read wrongly, in all of these some 
+# header info end up in the 'Text'
+
+# the issue is that in these files some data is not in the header, but somewhere else
+# reading function will be modified to search for date and lines info in whole text
+
+## DONE
+
+#%% TODO extract day, month, hour to new columns
+
+# sample_date = gigatest['NormalizedDate'].loc[10]
+gigatest['NormalizedDate'] = pd.to_datetime(gigatest['NormalizedDate'])
+# gigatest['Date'] = pd.to_datetime(gigatest['Date'])
+
+
+gigatest['Year'] = gigatest['NormalizedDate'].dt.year # will be probably deleted
+gigatest['Month'] = gigatest['NormalizedDate'].dt.month
+gigatest['Day'] = gigatest['NormalizedDate'].dt.day
+gigatest['Hour'] = gigatest['NormalizedDate'].dt.hour
+gigatest['Minute'] = gigatest['NormalizedDate'].dt.minute
+
+#%% splitting data TODO
+
+df_sorted = gigatest.sort_values('NormalizedDate')
+
 #%% splitting data
 
 from sklearn.model_selection import train_test_split
+
+train_test_df, valid_df = train_test_split(gigatest, test_size=0.3, shuffle=False)
+train_df, test_df = train_test_split(train_test_df, test_size=0.3, shuffle=False)
 
 
 #%% detecting language of texts
@@ -170,7 +237,7 @@ print(lang)
 
 def detect_language(t):
     try:
-        return detect(t)
+        return detect(t)            
     except:
         return 'other'
 
@@ -327,11 +394,39 @@ def loadList(filename):
     return tempNumpyArray.tolist()
 
 # loading results
-loadList("texts_tokenized_without_stopwords.npy")
+texts_tokenized_without_stopwords = loadList("texts_tokenized_without_stopwords.npy")
 
 
 #%% lemmatizing tokens - using simple forms
 
+# IN CASE OF ERROR
+# import nltk
+# nltk.download('wordnet')
+# nltk.download('omw') ## will download newest version, did't work for me
+# nltk.download('omw-1.4')
+
+from nltk.stem import WordNetLemmatizer
+from nltk.corpus import wordnet
+
+lemmatizer = WordNetLemmatizer()
+
+def lemmatize_words(words):
+    return [lemmatizer.lemmatize(word) for word in words]
+
+texts_lemmatized = list(map(lemmatize_words, texts_tokenized_without_stopwords))
+
+
+#%% lemmatizing - slower, but better (haven't tested it yet)
+
+import spacy
+
+nlp = spacy.load('en_core_web_sm')
+
+def lemmatize_words(doc):
+    doc = nlp(" ".join(doc))
+    return [token.lemma_ for token in doc]
+
+texts_lemmatized_spacy = list(map(lemmatize_words, texts_tokenized_without_stopwords))
 
 
 #%% vectorization - adding columns for words
