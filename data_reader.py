@@ -1,6 +1,7 @@
 #%% imports
 
 import pandas as pd
+import numpy as np
 import re
 
 
@@ -170,34 +171,6 @@ gigatest['Date'] = gigatest['Date'].apply(lambda date: normalize_date(date))
 # time zone chuja robi, the time remains the same with, and without including 
 # time zone. pierdole to. it is not that important now
 
-#%% 8 records with no date [READ AND DELETE]
-
-## NOTE
-# this block is now irrrelevant since its all OK now
-# you can read this block if you want and delete
-
-
-gigatest[gigatest['NormalizedDate'].isna()]
-
-null_date_index = gigatest[gigatest['NormalizedDate'].isna()].index
-
-gigatest['Lines'].loc[null_date_index]
-
-# all of these have 'Lines' value of 0
-
-sus_records = gigatest.loc[null_date_index]
-
-for index in null_date_index:
-    print("\n============================ NEXT FILE ============================\n")
-    print(gigatest['Text'].loc[index])
-
-# it turns out, that these records are read wrongly, in all of these some 
-# header info end up in the 'Text'
-
-# the issue is that in these files some data is not in the header, but somewhere else
-# reading function will be modified to search for date and lines info in whole text
-
-## DONE
 
 #%% TODO extract day, month, hour to new columns
 
@@ -209,20 +182,54 @@ gigatest['NormalizedDate'] = pd.to_datetime(gigatest['NormalizedDate'])
 gigatest['Year'] = gigatest['NormalizedDate'].dt.year # will be probably deleted
 gigatest['Month'] = gigatest['NormalizedDate'].dt.month
 gigatest['Day'] = gigatest['NormalizedDate'].dt.day
+# it does not take modified hours
 gigatest['Hour'] = gigatest['NormalizedDate'].dt.hour
 gigatest['Minute'] = gigatest['NormalizedDate'].dt.minute
 
-#%% splitting data TODO
+gigatest['Year'].value_counts() # delete
+gigatest['Month'].value_counts() # delete
+np.unique(gigatest['Day'].value_counts().index) # complete set
+len(np.unique(gigatest['Hour'].value_counts().index)) # complete
+len(np.unique(gigatest['Minute'].value_counts().index)) # complete
 
-df_sorted = gigatest.sort_values('NormalizedDate')
+#%% sorting data by NormalizedDate
+
+# df_sorted = gigatest.sort_values('NormalizedDate')
+# #df_sorted['Date']
+
+# # there is a problem here, it does not sort it properly
+# for i in range(40):
+#     print(df_sorted['NormalizedDate'][i])
+    
+    
+# sorted(gigatest['NormalizedDate'])
+# i = np.argsort(gigatest['NormalizedDate'])
+# type(i)
+# i = i.tolist()
+# type(gigatest.loc[i, :])
+
+df_sorted = gigatest.loc[np.argsort(gigatest['NormalizedDate']), :].reset_index()
+
+# # I think it works properly now
+# for i in range(40):
+#     print(df_sorted.loc[i, 'NormalizedDate'])
 
 #%% splitting data
 
 from sklearn.model_selection import train_test_split
 
-train_test_df, valid_df = train_test_split(gigatest, test_size=0.3, shuffle=False)
+train_test_df, valid_df = train_test_split(df_sorted, test_size=0.3, shuffle=False)
 train_df, test_df = train_test_split(train_test_df, test_size=0.3, shuffle=False)
 
+train_test_df['Month'].value_counts()
+valid_df['Month'].value_counts()
+
+train_df['Month'].value_counts()
+test_df['Month'].value_counts()
+valid_df['Month'].value_counts()
+
+train_test_df['Date']
+valid_df['Date'] # something goes wrong with sorting dates: at the beginning 1993-05-03, then 1993-04-01 and 1993-04-27 at the end
 
 #%% detecting language of texts
 
@@ -310,9 +317,49 @@ re.findall(pattern, 'pw@pw.pl') # finds emails now
 # in both cases results are similar
 #texts_tokenized = [re.findall(pattern, text.lower()) for text in texts]
 texts_tokenized = [word_tokenize(text.lower()) for text in texts]
-texts_tokenized[idx[0]]
+#texts_tokenized[idx[0]]
 
 # before the numbers and special marks are removed, it would be nice to get some statistics from them ...
+
+def count_punctuation_marks(tokens, marks):
+    count = 0
+    def count_punctuation_marks_in_token(token, marks):
+        count = 0
+        for l in token:
+            if l in marks:
+                count += 1
+        return count
+    for token in tokens:
+        count += count_punctuation_marks_in_token(token, marks)
+    return count
+
+#text_df = pd.DataFrame(texts)['Text']
+#text_df['Text'] = texts_tokenized
+
+# summarizing punctuation marks
+dots = [count_punctuation_marks(tokens, ["."]) for tokens in texts_tokenized]
+commas = [count_punctuation_marks(tokens, [","]) for tokens in texts_tokenized]
+qms = [count_punctuation_marks(tokens, ["?"]) for tokens in texts_tokenized]
+exs = [count_punctuation_marks(tokens, ["!"]) for tokens in texts_tokenized]
+
+# summarizing other marks
+oths = [count_punctuation_marks(tokens, ["<", ">", "/", "`", "~", "@", "#", "$", "%", "^", "&", "*", "(", ")", "-", "_", "+", "=", ";", ":", "'", "{", "}", "[", "]", "|", "\"", '"']) for tokens in texts_tokenized]
+
+# summarizing digits
+digits = [count_punctuation_marks(tokens, ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]) for tokens in texts_tokenized]
+
+# summarizing all marks
+
+def count_all_marks(tokens):
+    count = 0
+    for token in tokens:
+        count += len(token)
+    return count
+        
+all_marks = [count_all_marks(tokens) for tokens in texts_tokenized]
+
+# now we can measure the frequency of appearances, not only counts
+# finally, these variables should be included in the final df
 
 
 # getting only alphabetic marks
