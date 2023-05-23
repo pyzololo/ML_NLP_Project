@@ -489,7 +489,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 # where data is a list of lists with each inner list being a list of lemmatized words
 
 # First, convert list of lists into list of strings
-data_str = [' '.join(doc) for doc in texts_lemmatized_spacy]
+data_str = [' '.join(doc) for doc in texts_lemmatized]
 
 # Create the vectorizer
 vectorizer = TfidfVectorizer()
@@ -499,4 +499,4 @@ X = vectorizer.fit_transform(data_str)
 
 # The result is a sparse matrix representation of the documents in terms of TF-IDF features
 
-print(vectorizer.get_feature_names())
+print(vectorizer.get_feature_names_out()[:100])
