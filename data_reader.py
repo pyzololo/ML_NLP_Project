@@ -229,14 +229,13 @@ train_df['Month'].value_counts()
 test_df['Month'].value_counts()
 valid_df['Month'].value_counts()
 
-train_test_df['Date']
-valid_df['Date'] # something goes wrong with sorting dates: at the beginning 1993-05-03, then 1993-04-01 and 1993-04-27 at the end
+#train_test_df['Date']
+#valid_df['Date'] # something goes wrong with sorting dates: at the beginning 1993-05-03, then 1993-04-01 and 1993-04-27 at the end
 
 #%% detecting language of texts
 
 
 from langdetect import detect
-import numpy as np
 
 # example
 lang = detect("Ein, zwei, drei, vier")
@@ -304,7 +303,7 @@ gigatest.loc[idx[13], 'Text']
 from nltk.tokenize import word_tokenize
 import copy
 
-texts = copy.deepcopy(gigatest['Text'])
+texts = copy.deepcopy(df_sorted['Text'])
 
 word_tokenize(texts[0]) # too many punctuation marks
 word_tokenize('pw@pw.pl') # does not recognize e-mails
@@ -349,6 +348,8 @@ oths = [count_punctuation_marks(tokens, ["<", ">", "/", "`", "~", "@", "#", "$",
 # summarizing digits
 digits = [count_punctuation_marks(tokens, ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]) for tokens in texts_tokenized]
 
+token_words = [len(tokens) for tokens in texts_tokenized]
+
 # summarizing all marks
 
 def count_all_marks(tokens):
@@ -362,10 +363,45 @@ all_marks = [count_all_marks(tokens) for tokens in texts_tokenized]
 # now we can measure the frequency of appearances, not only counts
 # finally, these variables should be included in the final df
 
+# counting frequency
+#np.array([1, 2, 3]) / np.array([4, 5, 6])
 
-# getting only alphabetic marks
+all_marks = np.array(all_marks)
+dots = np.array(dots) / all_marks
+
+np.isnan(dots)
+np.argwhere(np.isnan(dots))
+dots[869]
+np.nan_to_num(dots, copy=False, nan=0.0) # works inplace
+dots[869]
+
+commas = np.array(commas) / all_marks
+np.nan_to_num(commas, copy=False, nan=0.0)
+
+qms = np.array(qms) / all_marks
+np.nan_to_num(qms, copy=False, nan=0.0)
+
+exs = np.array(exs) / all_marks
+np.nan_to_num(exs, copy=False, nan=0.0)
+
+oths = np.array(oths) / all_marks
+np.nan_to_num(oths, copy=False, nan=0.0)
+
+digits = np.array(digits) / all_marks
+np.nan_to_num(digits, copy=False, nan=0.0)
+
+token_words = np.array(token_words)
+
+words_len = all_marks / token_words
+np.nan_to_num(words_len, copy=False, nan=0.0)
+
+# adding features to data frame
+# it should be scaled
+df_additional = pd.DataFrame({"dots":dots, "commas":commas, "qms":qms, "exs":exs, "oths":oths, "digits":digits, "token_words":token_words, "words_len":words_len})
+
+
+#%% getting only alphabetic marks
 alpha_texts_tokenized = [[word for word in text if word.isalpha()] for text in texts_tokenized]
-
 
 # example
 words = ['this', 'is', 'a', 'sentence']
@@ -374,9 +410,13 @@ words = ['this', 'is', 'a', 'sentence']
 # testing languages again
 languages = [detect_language(' '.join(text)) for text in alpha_texts_tokenized]
 
+# adding new column
+df_additional['Language'] = languages
+
 df_lang = pd.DataFrame({'Language': languages})
 df_lang.value_counts()
 
+# it was tested before sorting rows by date
 # mostly empty texts, no words
 gigatest.loc[df_lang['Language'] == 'other', 'Text']
 
@@ -394,7 +434,6 @@ def print_texsts(texts, start, stop):
             print("END " + str(start))
             print(indexes[start])
             print()
-            start += 1
             
 # these texts are in english too
 print_texsts(gigatest.loc[(df_lang['Language'] != 'other') & (df_lang['Language'] != 'en'), 'Text'], 0, 2)   
@@ -413,8 +452,33 @@ len(texts_tokenized[2543])
 alpha_texts_tokenized[2543]
 len(alpha_texts_tokenized[2543])
 
+#%% finding non english texts
 
-# translation?
+indices = df_sorted.loc[df_additional['Language'] != 'en'].index
+len(indices)
+
+df_sorted.loc[indices[25], 'Text']
+
+def print_texsts(indices, start, stop):
+    for i in range(start, stop):
+            print("TEXT " + str(i))
+            print(df_sorted.loc[indices[i], 'Text'])
+            print("END " + str(i))
+            print("INDEX: " + str(indices[i]))
+            print()
+    
+print_texsts(indices, 110, 115)
+# indices in sorted_df!
+non_english_idx = {57:'fr', 882: 'arabskie jakies', 1472: 'de', 1475: 'de',
+                   10840: 'jakis szwedzki', 12998: 'szwedzki', 12764: 'Sweden',
+                   15704: 'de'}
+
+print(df_sorted.loc[df_additional['Language'] == 'de', 'Text'])
+print(df_sorted.loc[15704, 'Text']) # works well
+
+np.argwhere(indices.equals(15704))
+
+#%% translation?
 
 #%% removing stop words
 
@@ -477,11 +541,7 @@ def lemmatize_words(doc):
 texts_lemmatized_spacy = list(map(lemmatize_words, texts_tokenized_without_stopwords))
 
 
-#%% vectorization - adding columns for words
-
-from sklearn.feature_extraction.text import CountVectorizer
-
-#%%
+#%% vectorization
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 
@@ -489,14 +549,27 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 # where data is a list of lists with each inner list being a list of lemmatized words
 
 # First, convert list of lists into list of strings
-data_str = [' '.join(doc) for doc in texts_lemmatized]
+data_str = [' '.join(doc) for doc in texts_lemmatized_spacy]
 
 # Create the vectorizer
 vectorizer = TfidfVectorizer()
 
 # Apply the vectorizer
 X = vectorizer.fit_transform(data_str)
+X.shape
+type(X)
 
 # The result is a sparse matrix representation of the documents in terms of TF-IDF features
-
 print(vectorizer.get_feature_names_out()[:100])
+
+
+# changing type of the result to data frame
+X_np = X.todense()
+
+X_np[X_np != 0].shape # (1, 1704970)
+
+result = pd.DataFrame(X_np)
+result.shape
+
+
+
