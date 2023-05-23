@@ -117,6 +117,7 @@ def normalize_datetime(date):
     if match:
         try:
             date_obj = datetime.strptime(date, "%a, %d %b %Y %H:%M:%S %Z")
+            # date_obj = parser.parse(date, fuzzy=True, tzinfos=tzinfos)
         except ValueError:
             try:
                 date_obj = parser.parse(date, fuzzy=True, tzinfos=tzinfos)
@@ -479,3 +480,23 @@ texts_lemmatized_spacy = list(map(lemmatize_words, texts_tokenized_without_stopw
 #%% vectorization - adding columns for words
 
 from sklearn.feature_extraction.text import CountVectorizer
+
+#%%
+
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+# assuming your data is in a variable called 'data'
+# where data is a list of lists with each inner list being a list of lemmatized words
+
+# First, convert list of lists into list of strings
+data_str = [' '.join(doc) for doc in texts_lemmatized_spacy]
+
+# Create the vectorizer
+vectorizer = TfidfVectorizer()
+
+# Apply the vectorizer
+X = vectorizer.fit_transform(data_str)
+
+# The result is a sparse matrix representation of the documents in terms of TF-IDF features
+
+print(vectorizer.get_feature_names())
