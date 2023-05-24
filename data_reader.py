@@ -167,11 +167,6 @@ def normalize_date(date):
 gigatest['NormalizedDate'] = gigatest['Date'].apply(lambda date: normalize_datetime(date))
 gigatest['Date'] = gigatest['Date'].apply(lambda date: normalize_date(date))
 
-## NOTE
-# it turns out that function that is supposed to change the time including
-# time zone chuja robi, the time remains the same with, and without including 
-# time zone. pierdole to. it is not that important now
-
 
 #%% TODO extract day, month, hour to new columns
 
@@ -180,15 +175,15 @@ gigatest['NormalizedDate'] = pd.to_datetime(gigatest['NormalizedDate'])
 # gigatest['Date'] = pd.to_datetime(gigatest['Date'])
 
 
-gigatest['Year'] = gigatest['NormalizedDate'].dt.year # will be probably deleted
-gigatest['Month'] = gigatest['NormalizedDate'].dt.month
+# gigatest['Year'] = gigatest['NormalizedDate'].dt.year # will be probably deleted
+# gigatest['Month'] = gigatest['NormalizedDate'].dt.month
 gigatest['Day'] = gigatest['NormalizedDate'].dt.day
 # it does not take modified hours
 gigatest['Hour'] = gigatest['NormalizedDate'].dt.hour
 gigatest['Minute'] = gigatest['NormalizedDate'].dt.minute
 
-gigatest['Year'].value_counts() # delete
-gigatest['Month'].value_counts() # delete
+# gigatest['Year'].value_counts() # delete
+# gigatest['Month'].value_counts() # delete
 np.unique(gigatest['Day'].value_counts().index) # complete set
 len(np.unique(gigatest['Hour'].value_counts().index)) # complete
 len(np.unique(gigatest['Minute'].value_counts().index)) # complete
@@ -201,7 +196,6 @@ len(np.unique(gigatest['Minute'].value_counts().index)) # complete
 # # there is a problem here, it does not sort it properly
 # for i in range(40):
 #     print(df_sorted['NormalizedDate'][i])
-    
     
 # sorted(gigatest['NormalizedDate'])
 # i = np.argsort(gigatest['NormalizedDate'])
@@ -222,15 +216,8 @@ from sklearn.model_selection import train_test_split
 train_test_df, valid_df = train_test_split(df_sorted, test_size=0.3, shuffle=False)
 train_df, test_df = train_test_split(train_test_df, test_size=0.3, shuffle=False)
 
-train_test_df['Month'].value_counts()
-valid_df['Month'].value_counts()
-
-train_df['Month'].value_counts()
-test_df['Month'].value_counts()
-valid_df['Month'].value_counts()
-
-#train_test_df['Date']
-#valid_df['Date'] # something goes wrong with sorting dates: at the beginning 1993-05-03, then 1993-04-01 and 1993-04-27 at the end
+# train_test_df['Date']
+# valid_df['Date']
 
 #%% detecting language of texts
 
@@ -248,7 +235,11 @@ def detect_language(t):
     except:
         return 'other'
 
-gigatest['Language'] = gigatest['Text'].apply(lambda t: detect_language(t))
+# gigatest['Language'] = gigatest['Text'].apply(lambda t: detect_language(t))
+
+train_df['Language'] = train_df['Text'].apply(lambda t: detect_language(t))
+test_df['Language'] = test_df['Text'].apply(lambda t: detect_language(t))
+valid_df['Language'] = valid_df['Text'].apply(lambda t: detect_language(t))
 
 # in such places there are problems, an exception is thrown
 gigatest.loc[869,'Text']
@@ -305,6 +296,10 @@ import copy
 
 texts = copy.deepcopy(df_sorted['Text'])
 
+texts_train = copy.deepcopy(train_df['Text'])
+texts_test = copy.deepcopy(test_df['Text'])
+texts_valid = copy.deepcopy(valid_df['Text'])
+
 word_tokenize(texts[0]) # too many punctuation marks
 word_tokenize('pw@pw.pl') # does not recognize e-mails
 
@@ -317,6 +312,10 @@ re.findall(pattern, 'pw@pw.pl') # finds emails now
 # in both cases results are similar
 #texts_tokenized = [re.findall(pattern, text.lower()) for text in texts]
 texts_tokenized = [word_tokenize(text.lower()) for text in texts]
+
+texts_train_tokenized = [word_tokenize(text.lower()) for text in texts_train]
+texts_test_tokenized = [word_tokenize(text.lower()) for text in texts_test]
+texts_valid_tokenized = [word_tokenize(text.lower()) for text in texts_valid]
 #texts_tokenized[idx[0]]
 
 # before the numbers and special marks are removed, it would be nice to get some statistics from them ...
@@ -342,13 +341,43 @@ commas = [count_punctuation_marks(tokens, [","]) for tokens in texts_tokenized]
 qms = [count_punctuation_marks(tokens, ["?"]) for tokens in texts_tokenized]
 exs = [count_punctuation_marks(tokens, ["!"]) for tokens in texts_tokenized]
 
+
+dots_train = [count_punctuation_marks(tokens, ["."]) for tokens in texts_train_tokenized]
+commas_train = [count_punctuation_marks(tokens, [","]) for tokens in texts_train_tokenized]
+qms_train = [count_punctuation_marks(tokens, ["?"]) for tokens in texts_train_tokenized]
+exs_train = [count_punctuation_marks(tokens, ["!"]) for tokens in texts_train_tokenized]
+
+dots_test = [count_punctuation_marks(tokens, ["."]) for tokens in texts_test_tokenized]
+commas_test = [count_punctuation_marks(tokens, [","]) for tokens in texts_test_tokenized]
+qms_test = [count_punctuation_marks(tokens, ["?"]) for tokens in texts_test_tokenized]
+exs_test = [count_punctuation_marks(tokens, ["!"]) for tokens in texts_test_tokenized]
+
+dots_valid = [count_punctuation_marks(tokens, ["."]) for tokens in texts_valid_tokenized]
+commas_valid = [count_punctuation_marks(tokens, [","]) for tokens in texts_valid_tokenized]
+qms_valid = [count_punctuation_marks(tokens, ["?"]) for tokens in texts_valid_tokenized]
+exs_valid = [count_punctuation_marks(tokens, ["!"]) for tokens in texts_valid_tokenized]
+
 # summarizing other marks
-oths = [count_punctuation_marks(tokens, ["<", ">", "/", "`", "~", "@", "#", "$", "%", "^", "&", "*", "(", ")", "-", "_", "+", "=", ";", ":", "'", "{", "}", "[", "]", "|", "\"", '"']) for tokens in texts_tokenized]
+characters = ["<", ">", "/", "`", "~", "@", "#", "$", "%", "^", "&", "*", "(", ")", "-", "_", "+", "=", ";", ":", "'", "{", "}", "[", "]", "|", "\"", '"']
+
+oths = [count_punctuation_marks(tokens, characters) for tokens in texts_tokenized]
+
+oths_train = [count_punctuation_marks(tokens, characters) for tokens in texts_train_tokenized]
+oths_test = [count_punctuation_marks(tokens, characters) for tokens in texts_test_tokenized]
+oths_valid = [count_punctuation_marks(tokens, characters) for tokens in texts_valid_tokenized]
 
 # summarizing digits
 digits = [count_punctuation_marks(tokens, ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]) for tokens in texts_tokenized]
 
+digits_train = [count_punctuation_marks(tokens, ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]) for tokens in texts_train_tokenized]
+digits_test = [count_punctuation_marks(tokens, ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]) for tokens in texts_test_tokenized]
+digits_valid = [count_punctuation_marks(tokens, ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]) for tokens in texts_valid_tokenized]
+
 token_words = [len(tokens) for tokens in texts_tokenized]
+
+token_words_train = [len(tokens) for tokens in texts_train_tokenized]
+token_words_test = [len(tokens) for tokens in texts_test_tokenized]
+token_words_valid = [len(tokens) for tokens in texts_valid_tokenized]
 
 # summarizing all marks
 
@@ -358,50 +387,159 @@ def count_all_marks(tokens):
         count += len(token)
     return count
         
-all_marks = [count_all_marks(tokens) for tokens in texts_tokenized]
+all_marks = np.array([count_all_marks(tokens) for tokens in texts_tokenized])
+
+all_marks_train = np.array([count_all_marks(tokens) for tokens in texts_train_tokenized])
+all_marks_test = np.array([count_all_marks(tokens) for tokens in texts_test_tokenized])
+all_marks_valid = np.array([count_all_marks(tokens) for tokens in texts_valid_tokenized])
 
 # now we can measure the frequency of appearances, not only counts
 # finally, these variables should be included in the final df
 
 # counting frequency
 #np.array([1, 2, 3]) / np.array([4, 5, 6])
+#%% 
 
-all_marks = np.array(all_marks)
 dots = np.array(dots) / all_marks
 
-np.isnan(dots)
-np.argwhere(np.isnan(dots))
-dots[869]
+dots_train = np.array(dots_train) / all_marks_train
+dots_test = np.array(dots_test) / all_marks_test
+dots_valid = np.array(dots_valid) / all_marks_valid
+
+# np.isnan(dots)
+# np.argwhere(np.isnan(dots))
+# dots[196]
+
 np.nan_to_num(dots, copy=False, nan=0.0) # works inplace
-dots[869]
+
+np.nan_to_num(dots_train, copy=False, nan=0.0)
+np.nan_to_num(dots_test, copy=False, nan=0.0)
+np.nan_to_num(dots_valid, copy=False, nan=0.0)
+
 
 commas = np.array(commas) / all_marks
+
+commas_train = np.array(commas_train) / all_marks_train
+commas_test = np.array(commas_test) / all_marks_test
+commas_valid = np.array(commas_valid) / all_marks_valid
+
 np.nan_to_num(commas, copy=False, nan=0.0)
 
+np.nan_to_num(commas_train, copy=False, nan=0.0)
+np.nan_to_num(commas_test, copy=False, nan=0.0)
+np.nan_to_num(commas_valid, copy=False, nan=0.0)
+
+
 qms = np.array(qms) / all_marks
+
+qms_train = np.array(qms_train) / all_marks_train
+qms_test = np.array(qms_test) / all_marks_test
+qms_valid = np.array(qms_valid) / all_marks_valid
+
 np.nan_to_num(qms, copy=False, nan=0.0)
 
+np.nan_to_num(qms_train, copy=False, nan=0.0)
+np.nan_to_num(qms_test, copy=False, nan=0.0)
+np.nan_to_num(qms_valid, copy=False, nan=0.0)
+
+
 exs = np.array(exs) / all_marks
+
+exs_train = np.array(exs_train) / all_marks_train
+exs_test = np.array(exs_test) / all_marks_test
+exs_valid = np.array(exs_valid) / all_marks_valid
+
 np.nan_to_num(exs, copy=False, nan=0.0)
 
+np.nan_to_num(exs_train, copy=False, nan=0.0)
+np.nan_to_num(exs_test, copy=False, nan=0.0)
+np.nan_to_num(exs_valid, copy=False, nan=0.0)
+
+
 oths = np.array(oths) / all_marks
+
+oths_train = np.array(oths_train) / all_marks_train
+oths_test = np.array(oths_test) / all_marks_test
+oths_valid = np.array(oths_valid) / all_marks_valid
+
 np.nan_to_num(oths, copy=False, nan=0.0)
 
+np.nan_to_num(oths_train, copy=False, nan=0.0)
+np.nan_to_num(oths_test, copy=False, nan=0.0)
+np.nan_to_num(oths_valid, copy=False, nan=0.0)
+
+
 digits = np.array(digits) / all_marks
+
+digits_train = np.array(digits_train) / all_marks_train
+digits_test = np.array(digits_test) / all_marks_test
+digits_valid = np.array(digits_valid) / all_marks_valid
+
 np.nan_to_num(digits, copy=False, nan=0.0)
+
+np.nan_to_num(digits_train, copy=False, nan=0.0)
+np.nan_to_num(digits_test, copy=False, nan=0.0)
+np.nan_to_num(digits_valid, copy=False, nan=0.0)
+
 
 token_words = np.array(token_words)
 
+token_words_train = np.array(token_words_train)
+token_words_test = np.array(token_words_test)
+token_words_valid = np.array(token_words_valid)
+
 words_len = all_marks / token_words
+
+words_len_train = all_marks_train / token_words_train
+words_len_test = all_marks_test / token_words_test
+words_len_valid = all_marks_valid / token_words_valid
+
+np.nan_to_num(words_len, copy=False, nan=0.0)
+
+np.nan_to_num(words_len, copy=False, nan=0.0)
+np.nan_to_num(words_len, copy=False, nan=0.0)
 np.nan_to_num(words_len, copy=False, nan=0.0)
 
 # adding features to data frame
 # it should be scaled
 df_additional = pd.DataFrame({"dots":dots, "commas":commas, "qms":qms, "exs":exs, "oths":oths, "digits":digits, "token_words":token_words, "words_len":words_len})
 
+df_additional_train = pd.DataFrame({"dots":dots_train, "commas":commas_train, 
+                                    "qms":qms_train, "exs":exs_train, 
+                                    "oths":oths_train, "digits":digits_train, 
+                                    "token_words":token_words_train, "words_len":words_len_train})
+df_additional_test = pd.DataFrame({"dots":dots_test, "commas":commas_test, 
+                                   "qms":qms_test, "exs":exs_test, 
+                                   "oths":oths_test, "digits":digits_test, 
+                                   "token_words":token_words_test, "words_len":words_len_test})
+df_additional_valid = pd.DataFrame({"dots":dots_valid, "commas":commas_valid, 
+                                    "qms":qms_valid, "exs":exs_valid, 
+                                    "oths":oths_valid, "digits":digits_valid, 
+                                    "token_words":token_words_valid, "words_len":words_len_valid})
+
+#%% standarization
+
+from sklearn.preprocessing import StandardScaler
+
+scaler = StandardScaler()
+df_normalized_train = scaler.fit_transform(df_additional_train)
+df_normalized_test = scaler.fit_transform(df_additional_test)
+df_normalized_valid = scaler.fit_transform(df_additional_valid)
+
+# DataFrame znormalizowany
+df_normalized_train = pd.DataFrame(df_normalized_train, columns=df_additional_train.columns)
+df_normalized_test = pd.DataFrame(df_normalized_test, columns=df_additional_test.columns)
+df_normalized_valid = pd.DataFrame(df_normalized_valid, columns=df_additional_valid.columns)
+
 
 #%% getting only alphabetic marks
 alpha_texts_tokenized = [[word for word in text if word.isalpha()] for text in texts_tokenized]
+
+alpha_texts_tokenized_train = [[word for word in text if word.isalpha()] for text in texts_train_tokenized]
+alpha_texts_tokenized_test = [[word for word in text if word.isalpha()] for text in texts_test_tokenized]
+alpha_texts_tokenized_valid = [[word for word in text if word.isalpha()] for text in texts_valid_tokenized]
+
+#%% skip during presentation
 
 # example
 words = ['this', 'is', 'a', 'sentence']
@@ -409,6 +547,8 @@ words = ['this', 'is', 'a', 'sentence']
 
 # testing languages again
 languages = [detect_language(' '.join(text)) for text in alpha_texts_tokenized]
+
+# TODO add languages to train, test and valid
 
 # adding new column
 df_additional['Language'] = languages
@@ -452,7 +592,7 @@ len(texts_tokenized[2543])
 alpha_texts_tokenized[2543]
 len(alpha_texts_tokenized[2543])
 
-#%% finding non english texts
+#%% finding non english texts (also skip)
 
 indices = df_sorted.loc[df_additional['Language'] != 'en'].index
 len(indices)
@@ -485,7 +625,11 @@ np.argwhere(indices.equals(15704))
 from nltk.corpus import stopwords
 
 # here english stopwords, but it will not always work properly
-texts_tokenized_without_stopwords = [[word for word in text if word not in stopwords.words('english')] for text in alpha_texts_tokenized]
+# texts_tokenized_without_stopwords = [[word for word in text if word not in stopwords.words('english')] for text in alpha_texts_tokenized]
+
+texts_tokenized_without_stopwords_train = [[word for word in text if word not in stopwords.words('english')] for text in alpha_texts_tokenized_train]
+texts_tokenized_without_stopwords_test = [[word for word in text if word not in stopwords.words('english')] for text in alpha_texts_tokenized_test]
+texts_tokenized_without_stopwords_valid = [[word for word in text if word not in stopwords.words('english')] for text in alpha_texts_tokenized_valid]
 
 
 #%% saving list
@@ -496,8 +640,23 @@ def saveList(myList,filename):
     print("Saved successfully!")
     
 # needs to be saved as np.array
-saveList(np.array(texts_tokenized_without_stopwords), "texts_tokenized_without_stopwords.npy")
-    
+# saveList(np.array(texts_tokenized_without_stopwords), "texts_tokenized_without_stopwords.npy")
+saveList(np.array(texts_tokenized_without_stopwords_train), "texts_tokenized_without_stopwords_train.npy")
+saveList(np.array(texts_tokenized_without_stopwords_test), "texts_tokenized_without_stopwords_test.npy")
+saveList(np.array(texts_tokenized_without_stopwords_valid), "texts_tokenized_without_stopwords_valid.npy")
+
+#%% saving 2
+
+import pickle
+
+def saveList2(myList, filename):
+    with open(filename, 'wb') as file:
+        pickle.dump(myList, file)
+        
+saveList2(texts_tokenized_without_stopwords_train, "texts_tokenized_without_stopwords_train.pickle")
+saveList2(texts_tokenized_without_stopwords_test, "texts_tokenized_without_stopwords_test.pickle")
+saveList2(texts_tokenized_without_stopwords_valid, "texts_tokenized_without_stopwords_valid.pickle")
+
 #%% loading list
 
 def loadList(filename):
@@ -507,6 +666,20 @@ def loadList(filename):
 
 # loading results
 texts_tokenized_without_stopwords = loadList("texts_tokenized_without_stopwords.npy")
+
+# texts_tokenized_without_stopwords_train = loadList("texts_tokenized_without_stopwords_train.npy")
+# texts_tokenized_without_stopwords_test = loadList("texts_tokenized_without_stopwords_test.npy")
+# texts_tokenized_without_stopwords_valid = loadList("texts_tokenized_without_stopwords_valid.npy")
+
+#%% loading 2
+
+def loadList2(filename):
+    with open(filename, 'rb') as file:
+        return pickle.load(file)
+    
+texts_tokenized_without_stopwords_train = loadList2("texts_tokenized_without_stopwords_train.pickle")
+texts_tokenized_without_stopwords_test = loadList2("texts_tokenized_without_stopwords_test.pickle")
+texts_tokenized_without_stopwords_valid = loadList2("texts_tokenized_without_stopwords_valid.pickle")
 
 
 #%% lemmatizing tokens - using simple forms
@@ -528,7 +701,7 @@ def lemmatize_words(words):
 texts_lemmatized = list(map(lemmatize_words, texts_tokenized_without_stopwords))
 
 
-#%% lemmatizing - slower, but better (haven't tested it yet)
+#%% lemmatizing - slower, but better
 
 import spacy
 
@@ -538,8 +711,12 @@ def lemmatize_words(doc):
     doc = nlp(" ".join(doc))
     return [token.lemma_ for token in doc]
 
-texts_lemmatized_spacy = list(map(lemmatize_words, texts_tokenized_without_stopwords))
+# texts_lemmatized_spacy = list(map(lemmatize_words, texts_tokenized_without_stopwords))
 
+
+texts_lemmatized_spacy_train = list(map(lemmatize_words, texts_tokenized_without_stopwords_train))
+texts_lemmatized_spacy_test = list(map(lemmatize_words, texts_tokenized_without_stopwords_test))
+texts_lemmatized_spacy_valid = list(map(lemmatize_words, texts_tokenized_without_stopwords_valid))
 
 #%% vectorization
 
@@ -549,27 +726,145 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 # where data is a list of lists with each inner list being a list of lemmatized words
 
 # First, convert list of lists into list of strings
-data_str = [' '.join(doc) for doc in texts_lemmatized_spacy]
+# data_str = [' '.join(doc) for doc in texts_lemmatized_spacy]
+
+data_str_train = [' '.join(doc) for doc in texts_lemmatized_spacy_train]
 
 # Create the vectorizer
 vectorizer = TfidfVectorizer()
 
 # Apply the vectorizer
-X = vectorizer.fit_transform(data_str)
-X.shape
-type(X)
+X_train = vectorizer.fit_transform(data_str_train)
+X_train.shape
+type(X_train)
 
 # The result is a sparse matrix representation of the documents in terms of TF-IDF features
 print(vectorizer.get_feature_names_out()[:100])
 
 
 # changing type of the result to data frame
-X_np = X.todense()
+X_np = X_train.todense()
 
 X_np[X_np != 0].shape # (1, 1704970)
 
 result = pd.DataFrame(X_np)
+
+result = pd.DataFrame(X_np.A, columns=vectorizer.get_feature_names_out())
+
 result.shape
 
+#%% another tfidf
 
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+# Przygotowanie danych: zmiana listy słów na pojedyncze stringi dla każdego dokumentu
+train_texts = [" ".join(text) for text in texts_lemmatized_spacy_train]
+valid_texts = [" ".join(text) for text in texts_lemmatized_spacy_valid]
+test_texts = [" ".join(text) for text in texts_lemmatized_spacy_test]
+
+# Inicjalizacja TfidfVectorizer
+vectorizer = TfidfVectorizer()
+
+# Trenowanie vectorizera na danych treningowych
+X_train = vectorizer.fit_transform(train_texts)
+
+# Transformacja danych walidacyjnych i testowych
+X_valid = vectorizer.transform(valid_texts)
+X_test = vectorizer.transform(test_texts)
+
+
+
+#%%
+
+from sklearn.feature_extraction.text import CountVectorizer
+
+train_texts = [" ".join(text) for text in texts_lemmatized_spacy_train]
+valid_texts = [" ".join(text) for text in texts_lemmatized_spacy_valid]
+test_texts = [" ".join(text) for text in texts_lemmatized_spacy_test]
+
+vectorizer = CountVectorizer()
+
+X_train = vectorizer.fit_transform(train_texts)
+
+X_valid = vectorizer.transform(valid_texts)
+X_test = vectorizer.transform(test_texts)
+
+
+#%%
+
+from sklearn.cluster import KMeans
+
+n_clusters = 8
+
+kmeans = KMeans(n_clusters=n_clusters, random_state=0)
+
+kmeans.fit(X_train)
+
+train_preds = kmeans.predict(X_train)
+test_preds = kmeans.predict(X_test)
+
+cluster_centers = kmeans.cluster_centers_
+
+#%% elbow
+
+from sklearn.cluster import KMeans
+import matplotlib.pyplot as plt
+
+inertia = []
+K = range(1,20)
+for k in K:
+    kmeanModel = KMeans(n_clusters=k)
+    kmeanModel.fit(X_train)
+    inertia.append(kmeanModel.inertia_)
+
+plt.figure(figsize=(16,8))
+plt.plot(K, inertia, 'bx-')
+plt.xlabel('k')
+plt.ylabel('Inertia')
+plt.title('The Elbow Method showing the optimal k')
+plt.show()
+
+
+
+#%% PCA
+
+from sklearn.decomposition import PCA
+import matplotlib.pyplot as plt
+import plotly.express as px
+
+pca = PCA(n_components=3)
+reduced_features = pca.fit_transform(X_train.toarray())
+
+df_pca = pd.DataFrame(data = reduced_features, columns = ['principal component 1', 'principal component 2', 'principal component 3'])
+
+# plt.scatter(reduced_features[:,0], reduced_features[:,1], c=train_preds)
+fig = px.scatter_3d(reduced_features[:,0], reduced_features[:,1], reduced_features[:,2])
+
+reduced_cluster_centers = pca.transform(cluster_centers)
+
+# plt.scatter(reduced_cluster_centers[:, 0], reduced_cluster_centers[:,1], marker='x', s=150, c='b')
+# plt.show()
+
+fig = px.scatter_3d(reduced_features)
+fig.show()
+
+#%% PCA 3D
+
+import plotly.express as px
+
+# Redukcja wymiarowości do 3D
+pca = PCA(n_components=3)
+X_pca = pca.fit_transform(X_train.toarray())
+
+# Konwersja do DataFrame
+df_pca = pd.DataFrame(data = X_pca, columns = ['principal component 1', 'principal component 2', 'principal component 3'])
+
+# Dodanie informacji o klastrze do DataFrame
+kmeans = KMeans(n_clusters=10) # załóżmy, że optymalna liczba klastrów wynosi 3
+y_kmeans = kmeans.fit_predict(X_pca)
+df_pca['Cluster'] = y_kmeans
+
+# Tworzenie interaktywnego wykresu 3D
+fig = px.scatter_3d(df_pca, x='principal component 1', y='principal component 2', z='principal component 3', color='Cluster')
+fig.show()
 
