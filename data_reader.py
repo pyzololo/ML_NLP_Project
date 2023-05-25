@@ -4,8 +4,7 @@ import pandas as pd
 import numpy as np
 import re
 
-
-#%% reading data [UPDATED]
+#%% reading data
 
 def read_data():
     
@@ -259,6 +258,18 @@ df_sorted.loc[english_text_idx, 'Language'] = 'en'
 
 #%% translation?
 
+#pip install deep-translator
+from deep_translator import GoogleTranslator
+
+# # example
+# to_translate = 'I want to translate this text'
+# translated = GoogleTranslator(source='auto', target='de').translate(to_translate)
+
+df_sorted.loc[non_english_idx, 'Text'] = df_sorted.loc[non_english_idx, :].apply(lambda x: GoogleTranslator(source=x.Language, target='en').translate(x.Text), axis=1)
+
+print(df_sorted.loc[non_english_idx[0], 'Text'])
+print(df_sorted.loc[non_english_idx[0], 'Language'])
+
 
 #%% splitting data
 
@@ -269,7 +280,6 @@ train_df, test_df = train_test_split(train_test_df, test_size=0.3, shuffle=False
 
 # train_test_df['Date']
 # valid_df['Date']
-
 
 #%% word tokenization
 
@@ -386,36 +396,17 @@ texts_tokenized_without_stopwords_train = [[word for word in text if word not in
 texts_tokenized_without_stopwords_test = [[word for word in text if word not in stopwords.words('english')] for text in alpha_texts_tokenized_test]
 texts_tokenized_without_stopwords_valid = [[word for word in text if word not in stopwords.words('english')] for text in alpha_texts_tokenized_valid]
 
-
-#%% saving list
-
-# # needs to be saved as np.array
-# # saveList(np.array(texts_tokenized_without_stopwords), "texts_tokenized_without_stopwords.npy")
-# saveList(np.array(texts_tokenized_without_stopwords_train), "texts_tokenized_without_stopwords_train.npy")
-# saveList(np.array(texts_tokenized_without_stopwords_test), "texts_tokenized_without_stopwords_test.npy")
-# saveList(np.array(texts_tokenized_without_stopwords_valid), "texts_tokenized_without_stopwords_valid.npy")
-
 #%% saving 2
 
 saveList2(texts_tokenized_without_stopwords_train, "texts_tokenized_without_stopwords_train.pickle")
 saveList2(texts_tokenized_without_stopwords_test, "texts_tokenized_without_stopwords_test.pickle")
 saveList2(texts_tokenized_without_stopwords_valid, "texts_tokenized_without_stopwords_valid.pickle")
 
-#%% loading list
-
-# # loading results
-# texts_tokenized_without_stopwords = loadList("texts_tokenized_without_stopwords.npy")
-
-# # texts_tokenized_without_stopwords_train = loadList("texts_tokenized_without_stopwords_train.npy")
-# # texts_tokenized_without_stopwords_test = loadList("texts_tokenized_without_stopwords_test.npy")
-# # texts_tokenized_without_stopwords_valid = loadList("texts_tokenized_without_stopwords_valid.npy")
-
 #%% loading 2
     
 texts_tokenized_without_stopwords_train = loadList2("texts_tokenized_without_stopwords_train.pickle")
 texts_tokenized_without_stopwords_test = loadList2("texts_tokenized_without_stopwords_test.pickle")
 texts_tokenized_without_stopwords_valid = loadList2("texts_tokenized_without_stopwords_valid.pickle")
-
 
 #%% lemmatizing tokens - using simple forms
 
@@ -449,6 +440,18 @@ def lemmatize_words(doc):
 texts_lemmatized_spacy_train = list(map(lemmatize_words, texts_tokenized_without_stopwords_train))
 texts_lemmatized_spacy_test = list(map(lemmatize_words, texts_tokenized_without_stopwords_test))
 texts_lemmatized_spacy_valid = list(map(lemmatize_words, texts_tokenized_without_stopwords_valid))
+
+#%% saving 2
+
+saveList2(texts_lemmatized_spacy_train, "texts_lemmatized_spacy_train.pickle")
+saveList2(texts_lemmatized_spacy_test, "texts_lemmatized_spacy_test.pickle")
+saveList2(texts_lemmatized_spacy_valid, "texts_lemmatized_spacy_valid.pickle")
+
+#%% loading 2
+    
+texts_lemmatized_spacy_train = loadList2("texts_lemmatized_spacy_train.pickle")
+texts_lemmatized_spacy_test = loadList2("texts_lemmatized_spacy_test.pickle")
+texts_lemmatized_spacy_valid = loadList2("texts_lemmatized_spacy_valid.pickle")
 
 #%% vectorization
 
