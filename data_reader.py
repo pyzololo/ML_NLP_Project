@@ -91,24 +91,23 @@ gigatest = read_data()
 
 #%% insight into data
 
-type(gigatest)
-gigatest.shape
-gigatest.columns
+# type(gigatest)
+# gigatest.shape
+# gigatest.columns
 
-for col in gigatest.columns:
-    print("Column name: " + col)
-    print(gigatest[col].head())
-    print()
+# for col in gigatest.columns:
+#     print("Column name: " + col)
+#     print(gigatest[col].head())
+#     print()
 
-# in some texts there are still some attributes (Archive-name, Version, etc.), it may be removed
-print(gigatest.loc[0,'Text'][0:1000])
-print(gigatest.loc[1,'Text'][0:1000])
-print(gigatest.loc[2000,'Text'][0:1000])
-
+# # in some texts there are still some attributes (Archive-name, Version, etc.), it may be removed
+# print(gigatest.loc[0,'Text'][0:1000])
+# print(gigatest.loc[1,'Text'][0:1000])
+# print(gigatest.loc[2000,'Text'][0:1000])
 
 #%% normalize date including timezone
 
-import re
+#import re
 from datetime import datetime, timedelta
 from dateutil import parser, tz
 import pytz
@@ -250,7 +249,7 @@ df_sorted.loc[english_text_idx, 'Language'] = 'en'
 
 #%% translation?
 
-#pip install deep-translator
+# pip install deep-translator
 from deep_translator import GoogleTranslator
 
 # # example
@@ -269,6 +268,11 @@ from sklearn.model_selection import train_test_split
 
 train_test_df, valid_df = train_test_split(df_sorted, test_size=0.3, shuffle=False)
 train_df, test_df = train_test_split(train_test_df, test_size=0.3, shuffle=False)
+
+# removing index column
+train_df.drop('index', axis=1, inplace=True)
+valid_df.drop('index', axis=1, inplace=True)
+test_df.drop('index', axis=1, inplace=True)
 
 # train_test_df['Date']
 # valid_df['Date']
@@ -421,45 +425,12 @@ saveList2(texts_lemmatized_spacy_test, "texts_lemmatized_spacy_test.pickle")
 saveList2(texts_lemmatized_spacy_valid, "texts_lemmatized_spacy_valid.pickle")
 
 #%% loading lemmatized data
-    
+
 texts_lemmatized_spacy_train = loadList2("texts_lemmatized_spacy_train.pickle")
 texts_lemmatized_spacy_test = loadList2("texts_lemmatized_spacy_test.pickle")
 texts_lemmatized_spacy_valid = loadList2("texts_lemmatized_spacy_valid.pickle")
 
-#%% vectorization - idk what it is
-# TODO is that block even needed?
-
-from sklearn.feature_extraction.text import TfidfVectorizer
-
-# First, convert list of lists into list of strings
-# data_str = [' '.join(doc) for doc in texts_lemmatized_spacy]
-
-data_str_train = [' '.join(doc) for doc in texts_lemmatized_spacy_train]
-
-# Create the vectorizer
-vectorizer = TfidfVectorizer()
-
-# Apply the vectorizer
-X_train = vectorizer.fit_transform(data_str_train)
-X_train.shape
-type(X_train)
-
-# The result is a sparse matrix representation of the documents in terms of TF-IDF features
-print(vectorizer.get_feature_names_out()[:100])
-
-
-# changing type of the result to data frame
-X_np = X_train.todense()
-
-X_np[X_np != 0].shape # (1, 1704970)
-
-result = pd.DataFrame(X_np)
-
-result = pd.DataFrame(X_np.A, columns=vectorizer.get_feature_names_out())
-
-result.shape
-
-#%% another tfidf (GPT generated)
+#%% tfidf vectorization
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 
@@ -477,23 +448,68 @@ X_train_tfidf = tfidf_vectorizer.fit_transform(train_texts)
 X_valid_tfidf = tfidf_vectorizer.transform(valid_texts)
 X_test_tfidf = tfidf_vectorizer.transform(test_texts)
 
+#%% changing type of the result to data frame
 
+X_train_tfidf_df = pd.DataFrame(X_train_tfidf.todense().A, columns=tfidf_vectorizer.get_feature_names_out())
+X_valid_tfidf_df = pd.DataFrame(X_valid_tfidf.todense().A, columns=tfidf_vectorizer.get_feature_names_out())
+X_test_tfidf_df = pd.DataFrame(X_test_tfidf.todense().A, columns=tfidf_vectorizer.get_feature_names_out())
 
 #%% count vectorizing
 
-from sklearn.feature_extraction.text import CountVectorizer
+# from sklearn.feature_extraction.text import CountVectorizer
 
-train_texts = [" ".join(text) for text in texts_lemmatized_spacy_train]
-valid_texts = [" ".join(text) for text in texts_lemmatized_spacy_valid]
-test_texts = [" ".join(text) for text in texts_lemmatized_spacy_test]
+# train_texts = [" ".join(text) for text in texts_lemmatized_spacy_train]
+# valid_texts = [" ".join(text) for text in texts_lemmatized_spacy_valid]
+# test_texts = [" ".join(text) for text in texts_lemmatized_spacy_test]
 
-count_vectorizer = CountVectorizer()
+# count_vectorizer = CountVectorizer()
 
-X_train_count = count_vectorizer.fit_transform(train_texts)
+# X_train_count = count_vectorizer.fit_transform(train_texts)
 
-X_valid_count = count_vectorizer.transform(valid_texts)
-X_test_count = count_vectorizer.transform(test_texts)
+# X_valid_count = count_vectorizer.transform(valid_texts)
+# X_test_count = count_vectorizer.transform(test_texts)
 
+#%% merging data together
+
+# # for now only X_train_tfidf_df can be used, but some additional columns may be added after some operations (mapping, standarization)
+# chosen_columns = ['From', 'Subject', 'Organization', 'Lines', 'Day', 'Hour', 'Minute', 'Language']
+# X_train_tfidf_df = pd.concat([train_df[chosen_columns], X_train_tfidf_df], axis=1)
+
+#%% number of clusters
+
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score 
+from sklearn.metrics import calinski_harabasz_score
+from sklearn.metrics import davies_bouldin_score
+import matplotlib.pyplot as plt
+
+def metrics_plots(X, max_k=10):
+    score = []
+    score_kmeans_s = []
+    score_kmeans_c = []
+    score_kmeans_d = []
+
+    for k in range(2, max_k):
+        kmeans = KMeans(n_clusters=k, random_state=101)
+        predictions = kmeans.fit_predict(X)
+        # Calculate cluster validation metrics and append to lists of metrics
+        score.append(kmeans.score(X))
+        score_kmeans_s.append(silhouette_score(X, kmeans.labels_, metric='euclidean'))
+        score_kmeans_c.append(calinski_harabasz_score(X, kmeans.labels_))
+        score_kmeans_d.append(davies_bouldin_score(X, predictions))
+
+    list_scores = [score, score_kmeans_s, score_kmeans_c, score_kmeans_d] 
+    # Elbow Method plot
+    list_title = ['Within-cluster sum of squares', 'Silhouette Score', 'Calinski Harabasz', 'Davies Bouldin'] 
+    for i in range(len(list_scores)):
+        x_ticks = list(range(2, len(list_scores[i]) + 2))
+        plt.plot(x_ticks, list_scores[i], 'bx-')
+        plt.xlabel('k')
+        plt.ylabel(list_title[i])
+        plt.title('Optimal k')
+        plt.show()
+        
+metrics_plots(X_train_tfidf_df, 10)
 
 #%%
 
