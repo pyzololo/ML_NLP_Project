@@ -141,5 +141,6 @@ def metrics_plots(X, max_k=10):
         plt.ylabel(list_title[i])
         plt.title('Optimal k')
         plt.show()
-        
-metrics_plots(X_train_tfidf_df, 10)
+
+# 6 for now, but it shoul be executed for at least 10 or more (it needs a lot of time and space)
+metrics_plots(X_train_tfidf_df, 6)
