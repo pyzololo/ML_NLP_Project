@@ -58,10 +58,11 @@ def read_data():
 
 #%% saving lists functions
 
-def saveList(myList,filename):
-    # the filename should mention the extension 'npy'
-    np.save(filename,myList)
-    print("Saved successfully!")
+# this one is not needed anymore i guess
+# def saveList(myList,filename):
+#     # the filename should mention the extension 'npy'
+#     np.save(filename,myList)
+#     print("Saved successfully!")
     
 import pickle
 
@@ -71,10 +72,11 @@ def saveList2(myList, filename):
         
 #%% loading lists functions
 
-def loadList(filename):
-    # the filename should mention the extension 'npy'
-    tempNumpyArray=np.load(filename, allow_pickle=True)
-    return tempNumpyArray.tolist()
+# this one is not needed anymore i guess
+# def loadList(filename):
+#     # the filename should mention the extension 'npy'
+#     tempNumpyArray=np.load(filename, allow_pickle=True)
+#     return tempNumpyArray.tolist()
 
 def loadList2(filename):
     with open(filename, 'rb') as file:
@@ -191,47 +193,37 @@ def normalize_date(date):
 gigatest['NormalizedDate'] = gigatest['Date'].apply(lambda date: normalize_datetime(date))
 gigatest['Date'] = gigatest['Date'].apply(lambda date: normalize_date(date))
 
+#%% checking if the hour is different 
 
-#%% TODO extract day, month, hour to new columns
+for i in range(len(gigatest['Date'])):
+    hour1 = pd.to_datetime(gigatest['NormalizedDate'].loc[i]).to_pydatetime()
+    hour2 = gigatest['Date'].loc[i]
+    if hour1.hour != hour2.hour:
+        print('The hour is different')
 
-# sample_date = gigatest['NormalizedDate'].loc[10]
+# it turns out, that the function that was supposed to include time zone in 
+# datetime normalization is a piece of crap, it should be probably deleted, but
+# there are more important tasks now
+
+#%% extract day, month, hour to new columns
+
+# we dont use year neither month, because the distribution is very skewed
+
 gigatest['NormalizedDate'] = pd.to_datetime(gigatest['NormalizedDate'])
-# gigatest['Date'] = pd.to_datetime(gigatest['Date'])
 
-
-# gigatest['Year'] = gigatest['NormalizedDate'].dt.year # will be probably deleted
-# gigatest['Month'] = gigatest['NormalizedDate'].dt.month
 gigatest['Day'] = gigatest['NormalizedDate'].dt.day
 # it does not take modified hours
 gigatest['Hour'] = gigatest['NormalizedDate'].dt.hour
 gigatest['Minute'] = gigatest['NormalizedDate'].dt.minute
 
-# gigatest['Year'].value_counts() # delete
-# gigatest['Month'].value_counts() # delete
-np.unique(gigatest['Day'].value_counts().index) # complete set
-len(np.unique(gigatest['Hour'].value_counts().index)) # complete
-len(np.unique(gigatest['Minute'].value_counts().index)) # complete
+# np.unique(gigatest['Day'].value_counts().index) # complete set
+# len(np.unique(gigatest['Hour'].value_counts().index)) # complete
+# len(np.unique(gigatest['Minute'].value_counts().index)) # complete
 
 #%% sorting data by NormalizedDate
 
-# df_sorted = gigatest.sort_values('NormalizedDate')
-# #df_sorted['Date']
-
-# # there is a problem here, it does not sort it properly
-# for i in range(40):
-#     print(df_sorted['NormalizedDate'][i])
-    
-# sorted(gigatest['NormalizedDate'])
-# i = np.argsort(gigatest['NormalizedDate'])
-# type(i)
-# i = i.tolist()
-# type(gigatest.loc[i, :])
-
 df_sorted = gigatest.loc[np.argsort(gigatest['NormalizedDate']), :].reset_index()
 
-# # I think it works properly now
-# for i in range(40):
-#     print(df_sorted.loc[i, 'NormalizedDate'])
 
 #%% languages
 
@@ -396,36 +388,17 @@ texts_tokenized_without_stopwords_train = [[word for word in text if word not in
 texts_tokenized_without_stopwords_test = [[word for word in text if word not in stopwords.words('english')] for text in alpha_texts_tokenized_test]
 texts_tokenized_without_stopwords_valid = [[word for word in text if word not in stopwords.words('english')] for text in alpha_texts_tokenized_valid]
 
-#%% saving 2
+#%% saving data without stopwords and punctuation
 
 saveList2(texts_tokenized_without_stopwords_train, "texts_tokenized_without_stopwords_train.pickle")
 saveList2(texts_tokenized_without_stopwords_test, "texts_tokenized_without_stopwords_test.pickle")
 saveList2(texts_tokenized_without_stopwords_valid, "texts_tokenized_without_stopwords_valid.pickle")
 
-#%% loading 2
+#%% loading data without stopwords and punctuation
     
 texts_tokenized_without_stopwords_train = loadList2("texts_tokenized_without_stopwords_train.pickle")
 texts_tokenized_without_stopwords_test = loadList2("texts_tokenized_without_stopwords_test.pickle")
 texts_tokenized_without_stopwords_valid = loadList2("texts_tokenized_without_stopwords_valid.pickle")
-
-#%% lemmatizing tokens - using simple forms
-
-# # IN CASE OF ERROR
-# # import nltk
-# # nltk.download('wordnet')
-# # nltk.download('omw') ## will download newest version, did't work for me
-# # nltk.download('omw-1.4')
-
-# from nltk.stem import WordNetLemmatizer
-# from nltk.corpus import wordnet
-
-# lemmatizer = WordNetLemmatizer()
-
-# def lemmatize_words(words):
-#     return [lemmatizer.lemmatize(word) for word in words]
-
-# texts_lemmatized = list(map(lemmatize_words, texts_tokenized_without_stopwords))
-
 
 #%% lemmatizing - slower, but better
 
@@ -441,24 +414,22 @@ texts_lemmatized_spacy_train = list(map(lemmatize_words, texts_tokenized_without
 texts_lemmatized_spacy_test = list(map(lemmatize_words, texts_tokenized_without_stopwords_test))
 texts_lemmatized_spacy_valid = list(map(lemmatize_words, texts_tokenized_without_stopwords_valid))
 
-#%% saving 2
+#%% saving lemmatized data
 
 saveList2(texts_lemmatized_spacy_train, "texts_lemmatized_spacy_train.pickle")
 saveList2(texts_lemmatized_spacy_test, "texts_lemmatized_spacy_test.pickle")
 saveList2(texts_lemmatized_spacy_valid, "texts_lemmatized_spacy_valid.pickle")
 
-#%% loading 2
+#%% loading lemmatized data
     
 texts_lemmatized_spacy_train = loadList2("texts_lemmatized_spacy_train.pickle")
 texts_lemmatized_spacy_test = loadList2("texts_lemmatized_spacy_test.pickle")
 texts_lemmatized_spacy_valid = loadList2("texts_lemmatized_spacy_valid.pickle")
 
-#%% vectorization
+#%% vectorization - idk what it is
+# TODO is that block even needed?
 
 from sklearn.feature_extraction.text import TfidfVectorizer
-
-# assuming your data is in a variable called 'data'
-# where data is a list of lists with each inner list being a list of lemmatized words
 
 # First, convert list of lists into list of strings
 # data_str = [' '.join(doc) for doc in texts_lemmatized_spacy]
@@ -488,28 +459,27 @@ result = pd.DataFrame(X_np.A, columns=vectorizer.get_feature_names_out())
 
 result.shape
 
-#%% another tfidf
+#%% another tfidf (GPT generated)
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-# Przygotowanie danych: zmiana listy słów na pojedyncze stringi dla każdego dokumentu
 train_texts = [" ".join(text) for text in texts_lemmatized_spacy_train]
 valid_texts = [" ".join(text) for text in texts_lemmatized_spacy_valid]
 test_texts = [" ".join(text) for text in texts_lemmatized_spacy_test]
 
 # Inicjalizacja TfidfVectorizer
-vectorizer = TfidfVectorizer()
+tfidf_vectorizer = TfidfVectorizer()
 
 # Trenowanie vectorizera na danych treningowych
-X_train = vectorizer.fit_transform(train_texts)
+X_train_tfidf = tfidf_vectorizer.fit_transform(train_texts)
 
 # Transformacja danych walidacyjnych i testowych
-X_valid = vectorizer.transform(valid_texts)
-X_test = vectorizer.transform(test_texts)
+X_valid_tfidf = tfidf_vectorizer.transform(valid_texts)
+X_test_tfidf = tfidf_vectorizer.transform(test_texts)
 
 
 
-#%%
+#%% count vectorizing
 
 from sklearn.feature_extraction.text import CountVectorizer
 
@@ -517,12 +487,12 @@ train_texts = [" ".join(text) for text in texts_lemmatized_spacy_train]
 valid_texts = [" ".join(text) for text in texts_lemmatized_spacy_valid]
 test_texts = [" ".join(text) for text in texts_lemmatized_spacy_test]
 
-vectorizer = CountVectorizer()
+count_vectorizer = CountVectorizer()
 
-X_train = vectorizer.fit_transform(train_texts)
+X_train_count = count_vectorizer.fit_transform(train_texts)
 
-X_valid = vectorizer.transform(valid_texts)
-X_test = vectorizer.transform(test_texts)
+X_valid_count = count_vectorizer.transform(valid_texts)
+X_test_count = count_vectorizer.transform(test_texts)
 
 
 #%%
@@ -535,8 +505,8 @@ kmeans = KMeans(n_clusters=n_clusters, random_state=0)
 
 kmeans.fit(X_train)
 
-train_preds = kmeans.predict(X_train)
-test_preds = kmeans.predict(X_test)
+train_preds = kmeans.predict(X_train_tfidf)
+test_preds = kmeans.predict(X_test_tfidf)
 
 cluster_centers = kmeans.cluster_centers_
 
