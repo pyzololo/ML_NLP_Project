@@ -454,6 +454,11 @@ X_train_tfidf_df = pd.DataFrame(X_train_tfidf.todense().A, columns=tfidf_vectori
 X_valid_tfidf_df = pd.DataFrame(X_valid_tfidf.todense().A, columns=tfidf_vectorizer.get_feature_names_out())
 X_test_tfidf_df = pd.DataFrame(X_test_tfidf.todense().A, columns=tfidf_vectorizer.get_feature_names_out())
 
+# or this (depending on version)
+# X_train_tfidf_df = pd.DataFrame(X_train_tfidf.todense().A, columns=tfidf_vectorizer.get_feature_names())
+# X_valid_tfidf_df = pd.DataFrame(X_valid_tfidf.todense().A, columns=tfidf_vectorizer.get_feature_names())
+# X_test_tfidf_df = pd.DataFrame(X_test_tfidf.todense().A, columns=tfidf_vectorizer.get_feature_names())
+
 #%% count vectorizing
 
 # from sklearn.feature_extraction.text import CountVectorizer
@@ -509,7 +514,7 @@ def metrics_plots(X, max_k=10):
         plt.title('Optimal k')
         plt.show()
         
-metrics_plots(X_train_tfidf_df, 10)
+metrics_plots(X_train_tfidf_df, 15)
 
 #%%
 
