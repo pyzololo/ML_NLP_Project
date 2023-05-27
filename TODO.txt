@@ -1,6 +1,13 @@
-1. modify time to have only one time zone
-2. split the data into 3 sets (to have different time in each one)
-3. tokenize words in texts, removing unnecessary marks like !@#$%
-4. check languages once again and remove stop words (for each language or translate everything into english)
-5. vectorize texts by word counts
-6. create models (K-means, SVM, ...)
+1. modify time to have only one time zone (DONE)
+2. split the data into 3 sets (to have different time in each one) (DONE)
+3. tokenize words in texts, removing unnecessary marks like !@#$% (DONE)
+4. check languages once again and remove stop words (for each language or translate everything into english) (DONE)
+5. vectorize texts (DONE)
+6. Analyze number of clusters based on created charts and dendrogram
+7. create models:
+8. Create K-Means, K-Medoids or Mini Batch model
+9. Try hierarchical clustering - dendrograms
+10. Other models to try: DBSCAN, GMM, ...
+11. Analyze results, comparing models by some measures and creating some charts
+12. Posiibly reduce dimensions, but models will be harder to interpret
+13. Make interpretation of clusters

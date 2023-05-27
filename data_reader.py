@@ -498,7 +498,7 @@ def metrics_plots(X, max_k=10):
         kmeans = KMeans(n_clusters=k, random_state=101)
         predictions = kmeans.fit_predict(X)
         # Calculate cluster validation metrics and append to lists of metrics
-        score.append(kmeans.score(X))
+        score.append(kmeans.score(X) * (-1)) # there was a mistake here before
         score_kmeans_s.append(silhouette_score(X, kmeans.labels_, metric='euclidean'))
         score_kmeans_c.append(calinski_harabasz_score(X, kmeans.labels_))
         score_kmeans_d.append(davies_bouldin_score(X, predictions))
