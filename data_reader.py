@@ -3,6 +3,8 @@
 import pandas as pd
 import numpy as np
 import re
+import time
+import matplotlib.pyplot as plt
 
 #%% reading data
 
@@ -515,8 +517,9 @@ def metrics_plots(X, max_k=10):
         plt.show()
         
 metrics_plots(X_train_tfidf_df, 15)
+# possible number of clusters: 4, 6, 9, 10, 11, 12, 14
 
-#%%
+#%% KMeans
 
 from sklearn.cluster import KMeans
 
@@ -524,17 +527,72 @@ n_clusters = 8
 
 kmeans = KMeans(n_clusters=n_clusters, random_state=0)
 
-kmeans.fit(X_train)
+kmeans.fit(X_train_tfidf_df)
 
 train_preds = kmeans.predict(X_train_tfidf)
 test_preds = kmeans.predict(X_test_tfidf)
 
 cluster_centers = kmeans.cluster_centers_
 
+#%% K-Medoids
+
+from sklearn_extra.cluster import KMedoids
+
+st = time.time()
+
+kmedoids = KMedoids(n_clusters=9, random_state=0)
+kmedoids.fit(X_train_tfidf_df)
+y_kmedoids = kmedoids.predict(X_train_tfidf_df)
+centers = kmedoids.cluster_centers_
+
+et = time.time()
+elapsed_time = et - st
+print(elapsed_time)
+
+#%% Mini Batch
+
+from sklearn import cluster
+
+miniBatchKmeans = cluster.MiniBatchKMeans(n_clusters=9, random_state=0)
+miniBatchKmeans.fit(X_train_tfidf_df)
+y_mbatch = miniBatchKmeans.predict(X_train_tfidf_df)
+centers = miniBatchKmeans.cluster_centers_
+
+#%% DBSCAN
+
+# here the eps value should be optimized
+dbs = cluster.DBSCAN(n_jobs=-1)
+dbs.fit(X_train_tfidf_df)
+dbs.labels_
+
+#%% GMM
+
+from sklearn import mixture
+
+gmm = mixture.GaussianMixture(n_components=8, random_state=0)
+gmm.fit(X_train_tfidf_df)
+# problems with memory
+
+#%% dendrogram
+
+from scipy.cluster import hierarchy
+
+st = time.time()
+
+# method parameter should be checked
+Z = hierarchy.linkage(X_train_tfidf_df, method='single')
+# plt.figure(figsize=(10, 5), dpi= 200, facecolor='w', edgecolor='k')
+plt.figure(facecolor='w', edgecolor='k')
+hierarchy.dendrogram(Z)
+plt.show()
+
+et = time.time()
+elapsed_time = et - st
+print(elapsed_time)
+
 #%% elbow
 
 from sklearn.cluster import KMeans
-import matplotlib.pyplot as plt
 
 inertia = []
 K = range(1,20)
