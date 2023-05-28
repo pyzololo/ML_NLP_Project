@@ -575,20 +575,21 @@ gmm.fit(X_train_tfidf_df)
 
 #%% dendrogram
 
-from scipy.cluster import hierarchy
-
-st = time.time()
+from scipy.cluster.hierarchy import linkage, dendrogram
 
 # method parameter should be checked
-Z = hierarchy.linkage(X_train_tfidf_df, method='single')
-# plt.figure(figsize=(10, 5), dpi= 200, facecolor='w', edgecolor='k')
-plt.figure(facecolor='w', edgecolor='k')
-hierarchy.dendrogram(Z)
-plt.show()
+Z = linkage(X_train_tfidf_df, method='single')
 
-et = time.time()
-elapsed_time = et - st
-print(elapsed_time)
+saveList2(Z, "Z.pickle")
+
+Z = loadList2("Z.pickle")
+
+# plt.figure(figsize=(10, 5), dpi= 200, facecolor='w', edgecolor='k')
+#plt.figure(facecolor='w', edgecolor='k')
+
+# this line restarts the kernel
+dendrogram(Z)
+plt.show()
 
 #%% elbow
 
