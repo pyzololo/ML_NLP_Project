@@ -5,6 +5,8 @@ import numpy as np
 import re
 import time
 import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.tree import DecisionTreeClassifier
 
 #%% reading data
 
@@ -519,6 +521,133 @@ def metrics_plots(X, max_k=10):
 metrics_plots(X_train_tfidf_df, 15)
 # possible number of clusters: 4, 6, 9, 10, 11, 12, 14
 
+#%% feature importance
+
+def make_prediction(X, y):
+    decisionTreeClassifier = DecisionTreeClassifier(random_state=1)
+    decisionTreeClassifier.fit(X, y)
+    y_pred = decisionTreeClassifier.predict(X)
+    return y_pred
+    
+def plot_feature_importance(X, y, limit = 10):
+    # creating and fitting model
+    decisionTreeClassifier = DecisionTreeClassifier(random_state=1)
+    decisionTreeClassifier.fit(X, y)
+    importance = decisionTreeClassifier.feature_importances_
+    
+    names = X.columns
+    
+    # creating arrays from feature importance and feature names
+    feature_importance = np.array(importance)
+    feature_names = np.array(names)
+    
+    # creating a DataFrame using a Dictionary
+    data={'feature_names': feature_names, 'feature_importance': feature_importance}
+    fi_df = pd.DataFrame(data)
+    
+    # sorting the DataFrame in order decreasing feature importance
+    fi_df.sort_values(by=['feature_importance'], ascending=False,inplace=True)
+    
+    # selecting a subset of features
+    fi_df = fi_df.iloc[:limit]
+    
+    # defining size of bar plot
+    plt.figure(figsize=(10,8))
+    sns.barplot(x=fi_df['feature_importance'], y=fi_df['feature_names'])
+    plt.title('FEATURE IMPORTANCE')
+    plt.xlabel('FEATURE IMPORTANCE')
+    plt.ylabel('FEATURE NAMES')
+    
+#%% prediction results
+
+def check_model_properties(y_test, y_predicted):
+    from sklearn.metrics import accuracy_score, f1_score
+    r = 4
+    print('accuracy_score: ', round(accuracy_score(y_test, y_predicted), r))
+    print('f1_score_micro: ', round(f1_score(y_test, y_predicted, average = 'micro'), r))
+    print('f1_score_macro: ', round(f1_score(y_test, y_predicted, average = 'macro'), r))
+    print('f1_score_weighted: ', round(f1_score(y_test, y_predicted, average = 'weighted'), r))
+    
+#%% clustering scores (from labs)
+
+def count_clustering_scores(X, cluster_num, model, score_fun):
+    # Napiszmy tę funkcje tak ogólnie, jak to możliwe. 
+    # Zwróćcie uwagę na przekazanie obiektów typu callable: model i score_fun.
+    if isinstance(cluster_num, int):
+        cluster_num_iter = [cluster_num]
+    else:
+        cluster_num_iter = cluster_num
+        
+    scores = []    
+    for k in cluster_num_iter:
+        model_instance = model(n_clusters=k)
+        labels = model_instance.fit_predict(X)
+        wcss = score_fun(X, labels)
+        scores.append(wcss)
+    
+    if isinstance(cluster_num, int):
+        return scores[0]
+    else:
+        return scores
+    
+from scipy.spatial import distance
+
+def _change_type_to_numpy(X):
+    if isinstance(X, pd.DataFrame):
+        return X.to_numpy()
+    return X
+
+def min_interclust_dist(X, label):
+    clusters = set(label)
+    global_min_dist = np.inf
+    for cluster_i in clusters:
+        cluster_i_idx = np.where(label == cluster_i)
+        for cluster_j in clusters:
+            if cluster_i != cluster_j:
+                cluster_j_idx = np.where(label == cluster_j)
+                interclust_min_dist = np.min(distance.cdist(X[cluster_i_idx], X[cluster_j_idx]))
+                global_min_dist = np.min([global_min_dist, interclust_min_dist])
+    return global_min_dist
+
+def _inclust_mean_dists(X, label):
+    clusters = set(label)
+    inclust_dist_list = []
+    for cluster_i in clusters:
+        cluster_i_idx = np.where(label == cluster_i)
+        inclust_dist = np.mean(distance.pdist(X[cluster_i_idx]))
+        inclust_dist_list.append(inclust_dist)
+    return inclust_dist_list
+
+def mean_inclust_dist(X, label):
+    inclust_dist_list = _inclust_mean_dists(X, label)
+    return np.mean(inclust_dist_list)
+
+def std_dev_of_inclust_dist(X, label):
+    inclust_dist_list = _inclust_mean_dists(X, label)
+    return np.std(inclust_dist_list)
+
+def mean_dist_to_center(X, label):
+    clusters = set(label)
+    inclust_dist_list = []
+    for cluster_i in clusters:
+        cluster_i_idx = np.where(label == cluster_i)
+        cluster_i_mean = np.mean(X[cluster_i_idx], axis=0, keepdims=True)
+        inclust_dist = np.mean(distance.cdist(X[cluster_i_idx], cluster_i_mean))
+        inclust_dist_list.append(inclust_dist)
+    return np.mean(inclust_dist_list)
+
+def summary(X, label):
+    X = _change_type_to_numpy(X)
+    results = []
+    results.append(min_interclust_dist(X, label))
+    results.append(mean_inclust_dist(X, label))
+    results.append(std_dev_of_inclust_dist(X, label))
+    results.append(mean_dist_to_center(X, label))
+    labels = ['min dist between clusters', 'mean dist in clust', 'std dev dist in clust', 'mean dist to clust center']
+    results = [results]
+    S = pd.DataFrame(data = results, columns = labels)
+    return S
+
 #%% KMeans
 
 from sklearn.cluster import KMeans
@@ -529,10 +658,32 @@ kmeans = KMeans(n_clusters=n_clusters, random_state=0)
 
 kmeans.fit(X_train_tfidf_df)
 
-train_preds = kmeans.predict(X_train_tfidf)
-test_preds = kmeans.predict(X_test_tfidf)
+train_preds = kmeans.predict(X_train_tfidf_df)
+test_preds = kmeans.predict(X_train_tfidf_df)
 
 cluster_centers = kmeans.cluster_centers_
+
+# we can add also a barplot to visualise devision
+pd.DataFrame([train_preds]).value_count()
+
+#%% 
+
+plot_feature_importance(X_train_tfidf_df, train_preds, 10)
+# looks good
+
+#%%
+
+print(f'Minimal distance between clusters = {min_interclust_dist(X_train_tfidf_df.to_numpy(), train_preds):.2f}.')
+print(f'Average distance between points in the same class = '
+      f'{mean_inclust_dist(X_train_tfidf, train_preds):.2f}.')
+print(f'Standard deviation of distance between points in the same class = '
+      f'{std_dev_of_inclust_dist(X_train_tfidf, train_preds):.3f}.')
+print(f'Average distance to cluster center = '
+      f'{mean_dist_to_center(X_train_tfidf, train_preds):.2f}.')
+
+# it is better to use this instead
+# S_kmeans = summary(X_train_tfidf_df, train_preds)
+# print(S_kmeans)
 
 #%% K-Medoids
 

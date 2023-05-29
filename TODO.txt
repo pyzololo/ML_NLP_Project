@@ -3,11 +3,12 @@
 3. tokenize words in texts, removing unnecessary marks like !@#$% (DONE)
 4. check languages once again and remove stop words (for each language or translate everything into english) (DONE)
 5. vectorize texts (DONE)
-6. Analyze number of clusters based on created charts and dendrogram
-7. create models:
-8. Create K-Means, K-Medoids or Mini Batch model
-9. Try hierarchical clustering - dendrograms
-10. Other models to try: DBSCAN, GMM, ...
-11. Analyze results, comparing models by some measures and creating some charts
-12. Posiibly reduce dimensions, but models will be harder to interpret
-13. Make interpretation of clusters
+6. include marks statistics in df
+7. Analyze number of clusters based on created charts and dendrogram
+8. create models:
+9. Create K-Means, K-Medoids or Mini Batch model
+10. Try hierarchical clustering - dendrograms
+11. Other models to try: DBSCAN, GMM, ...
+12. Analyze results, comparing models by some measures and creating some charts
+13. Posiibly reduce dimensions, but models will be harder to interpret
+14. Make interpretation of clusters
