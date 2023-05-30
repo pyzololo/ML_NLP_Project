@@ -490,7 +490,6 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score 
 from sklearn.metrics import calinski_harabasz_score
 from sklearn.metrics import davies_bouldin_score
-import matplotlib.pyplot as plt
 
 def metrics_plots(X, max_k=10):
     score = []
@@ -560,13 +559,13 @@ def plot_feature_importance(X, y, limit = 10):
     
 #%% prediction results
 
-def check_model_properties(y_test, y_predicted):
+def check_model_properties(y_true, y_predicted):
     from sklearn.metrics import accuracy_score, f1_score
     r = 4
-    print('accuracy_score: ', round(accuracy_score(y_test, y_predicted), r))
-    print('f1_score_micro: ', round(f1_score(y_test, y_predicted, average = 'micro'), r))
-    print('f1_score_macro: ', round(f1_score(y_test, y_predicted, average = 'macro'), r))
-    print('f1_score_weighted: ', round(f1_score(y_test, y_predicted, average = 'weighted'), r))
+    print('accuracy_score: ', round(accuracy_score(y_true, y_predicted), r))
+    print('f1_score_micro: ', round(f1_score(y_true, y_predicted, average = 'micro'), r))
+    print('f1_score_macro: ', round(f1_score(y_true, y_predicted, average = 'macro'), r))
+    print('f1_score_weighted: ', round(f1_score(y_true, y_predicted, average = 'weighted'), r))
     
 #%% clustering scores (from labs)
 
@@ -652,19 +651,81 @@ def summary(X, label):
 
 from sklearn.cluster import KMeans
 
-n_clusters = 8
+n_clusters = 14
 
-kmeans = KMeans(n_clusters=n_clusters, random_state=0)
+kmeans = KMeans(n_clusters=n_clusters, random_state=0, n_init=10)
 
 kmeans.fit(X_train_tfidf_df)
 
 train_preds = kmeans.predict(X_train_tfidf_df)
-test_preds = kmeans.predict(X_train_tfidf_df)
+test_preds = kmeans.predict(X_test_tfidf_df)
 
 cluster_centers = kmeans.cluster_centers_
 
 # we can add also a barplot to visualise devision
-pd.DataFrame([train_preds]).value_count()
+train_preds_summarized = pd.Series(train_preds).value_counts()
+test_preds_summarized = pd.Series(test_preds).value_counts()
+
+
+#%% draw barplot of cluster size - function
+
+def plot_cluster_size_from_series(series, title):
+    plt.bar(series.index, series.values)
+    plt.xlabel('Values')
+    plt.ylabel('Count')
+    plt.title(title)
+    plt.show()
+    
+#%% KMeans - cluster sizes
+
+plot_cluster_size_from_series(train_preds_summarized, 'Klastry KMeans zbiór treningowy')
+plot_cluster_size_from_series(test_preds_summarized, 'Klastry KMeans zbiór testowy')
+
+#%% print cluster contents - function
+
+def print_cluster_contents(df, preds):
+    '''
+    for each cluster function summarizes how many of each directory end up inside
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        train_df, test_df or valid_df
+    preds : numpy.ndarray
+        the result of model prediction
+    '''
+    n = len(np.unique(preds))
+    directories = df['Directory']
+
+    for i in range(n):
+        print(f"CLUSTER NO. {i}")
+        indexes = np.where(preds == i)
+        directories_inside = directories.iloc[indexes]
+        print(directories_inside.value_counts())
+        print()
+
+#%% sandbox
+
+my_indexes = np.where(train_preds == 9)
+my_df = X_train_tfidf_df.iloc[my_indexes]
+
+y = [0 for i in range(len(train_preds))]
+y = np.array(y)
+y[my_indexes[0].tolist()] = 1
+
+plot_feature_importance(my_df, np.full(len(my_df), 9), 10)
+
+plot_feature_importance(X_train_tfidf_df, y, 10)
+
+#%% some insight into result
+# checking which directories end up in each cluster
+
+print_cluster_contents(train_df, train_preds)
+print_cluster_contents(test_df, test_preds)
+
+# NOTE 
+# a lot of all directories end up in last cluster
+# we should tweak the model parameters
 
 #%% 
 
@@ -693,12 +754,23 @@ st = time.time()
 
 kmedoids = KMedoids(n_clusters=9, random_state=0)
 kmedoids.fit(X_train_tfidf_df)
-y_kmedoids = kmedoids.predict(X_train_tfidf_df)
+y_kmedoids_train = kmedoids.predict(X_train_tfidf_df)
+y_kmedoids_test = kmedoids.predict(X_test_tfidf_df)
 centers = kmedoids.cluster_centers_
 
 et = time.time()
 elapsed_time = et - st
 print(elapsed_time)
+
+train_preds_summarized_medoids = pd.Series(y_kmedoids_train).value_counts()
+test_preds_summarized_medoids = pd.Series(y_kmedoids_test).value_counts()
+
+# everything in one cluster, idk why
+
+#%% K-Medoids - cluster size
+
+plot_cluster_size_from_series(train_preds_summarized_medoids, 'Klastry K-Medoids zbiór treningowy')
+plot_cluster_size_from_series(test_preds_summarized_medoids, 'Klastry K-Medoids zbiór testowy')
 
 #%% Mini Batch
 
@@ -706,8 +778,22 @@ from sklearn import cluster
 
 miniBatchKmeans = cluster.MiniBatchKMeans(n_clusters=9, random_state=0)
 miniBatchKmeans.fit(X_train_tfidf_df)
-y_mbatch = miniBatchKmeans.predict(X_train_tfidf_df)
+y_mbatch_train = miniBatchKmeans.predict(X_train_tfidf_df)
+y_mbatch_test = miniBatchKmeans.predict(X_test_tfidf_df)
 centers = miniBatchKmeans.cluster_centers_
+
+train_preds_summarized_mbatch = pd.Series(y_mbatch_train).value_counts()
+test_preds_summarized_mbatch = pd.Series(y_mbatch_test).value_counts()
+
+#%% Mini Batch - cluster size
+
+plot_cluster_size_from_series(train_preds_summarized_mbatch, 'Klastry Mini Batch zbiór treningowy')
+plot_cluster_size_from_series(test_preds_summarized_mbatch, 'Klastry Mini Batch zbiór testowy')
+
+#%% printing cluster contents Mini BAtch
+
+print_cluster_contents(train_df, y_mbatch_train)
+print_cluster_contents(test_df, y_mbatch_test)
 
 #%% DBSCAN
 
