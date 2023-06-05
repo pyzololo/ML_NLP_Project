@@ -651,7 +651,7 @@ def summary(X, label):
 
 from sklearn.cluster import KMeans
 
-n_clusters = 14
+n_clusters = 16
 
 kmeans = KMeans(n_clusters=n_clusters, random_state=0, n_init=10)
 
@@ -722,6 +722,10 @@ plot_feature_importance(X_train_tfidf_df, y, 10)
 
 print_cluster_contents(train_df, train_preds)
 print_cluster_contents(test_df, test_preds)
+
+# bad: 9, 11, 13, 16
+# ok: 10, 12, 14, 15
+# good
 
 # NOTE 
 # a lot of all directories end up in last cluster
