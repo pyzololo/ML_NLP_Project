@@ -651,7 +651,7 @@ def summary(X, label):
 
 from sklearn.cluster import KMeans
 
-n_clusters = 16
+n_clusters = 12
 
 kmeans = KMeans(n_clusters=n_clusters, random_state=0, n_init=10)
 
@@ -723,13 +723,34 @@ plot_feature_importance(X_train_tfidf_df, y, 10)
 print_cluster_contents(train_df, train_preds)
 print_cluster_contents(test_df, test_preds)
 
-# bad: 9, 11, 13, 16
-# ok: 10, 12, 14, 15
-# good
+# bad: 9, 11, 13, 15, 16
+# ok: 10, 12, 14
+# best: 12
 
 # NOTE 
 # a lot of all directories end up in last cluster
 # we should tweak the model parameters
+
+#%% another sandbox
+
+indexes = np.where(train_preds == 5)
+temp = train_df.iloc[indexes]
+my_directories = temp['Directory']
+my_texts = temp['Text']
+
+my_index = 222
+print('\n'.join(['\t' + line for line in my_texts.iloc[my_index].split('\n')]))
+print(my_directories.iloc[my_index])
+
+
+#0 mid east
+#1 ateizm chrzecijaństwo duży
+#2 hardware
+#3 kryptologia
+#4 samochody
+#5 hardware - sprzedaż
+
+#11 q-a
 
 #%% 
 
