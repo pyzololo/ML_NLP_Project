@@ -738,9 +738,10 @@ temp = train_df.iloc[indexes]
 my_directories = temp['Directory']
 my_texts = temp['Text']
 
-my_index = 222
+my_index = 223
 print('\n'.join(['\t' + line for line in my_texts.iloc[my_index].split('\n')]))
 print(my_directories.iloc[my_index])
+
 
 
 #0 mid east
@@ -751,6 +752,30 @@ print(my_directories.iloc[my_index])
 #5 hardware - sprzedaż
 
 #11 q-a
+
+#%% some GPT stuff
+
+cluster_labels = kmeans.labels_
+
+data = train_texts
+
+cluster_names = {}
+
+for i in range(12):
+    # Get the data points belonging to the current cluster
+    cluster_data = [data[j] for j in range(len(data)) if cluster_labels[j] == i]
+    
+    # Extract keywords from the cluster data using TF-IDF
+    tfidf_vector = tfidf_vectorizer.transform(cluster_data)
+    feature_names = tfidf_vectorizer.get_feature_names_out()
+    top_keywords = tfidf_vector.toarray().argsort()[:, ::-1][:, :50]  # Get top 3 keywords
+    
+    # Generate cluster name using top keywords
+    cluster_name = ', '.join([feature_names[keyword_index] for keyword_index in top_keywords[0]])
+    cluster_names[i] = cluster_name
+    
+for cluster_label, cluster_name in cluster_names.items():
+    print(f"Cluster {cluster_label}: {cluster_name}")
 
 #%% 
 
