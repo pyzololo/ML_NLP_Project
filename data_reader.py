@@ -374,9 +374,9 @@ df_additional_valid = get_all_marks_statistics(texts_valid_tokenized)
 from sklearn.preprocessing import StandardScaler
 
 scaler = StandardScaler()
-df_normalized_train = scaler.fit_transform(df_additional_train)
-df_normalized_test = scaler.transform(df_additional_test)
-df_normalized_valid = scaler.transform(df_additional_valid)
+df_normalized_train = pd.DataFrame(scaler.fit_transform(df_additional_train), columns = df_additional_train.columns)
+df_normalized_test = pd.DataFrame(scaler.fit_transform(df_additional_test), columns = df_additional_test.columns)
+df_normalized_valid = pd.DataFrame(scaler.fit_transform(df_additional_valid), columns = df_additional_valid.columns)
 
 
 #%% getting only alphabetic marks
@@ -462,6 +462,13 @@ X_test_tfidf_df = pd.DataFrame(X_test_tfidf.todense().A, columns=tfidf_vectorize
 # X_train_tfidf_df = pd.DataFrame(X_train_tfidf.todense().A, columns=tfidf_vectorizer.get_feature_names())
 # X_valid_tfidf_df = pd.DataFrame(X_valid_tfidf.todense().A, columns=tfidf_vectorizer.get_feature_names())
 # X_test_tfidf_df = pd.DataFrame(X_test_tfidf.todense().A, columns=tfidf_vectorizer.get_feature_names())
+
+
+#%% adding punctuation marks statistics 
+
+X_train_tfidf_df = pd.concat([X_train_tfidf_df, df_normalized_train.reindex(X_train_tfidf_df.index)], axis=1)
+X_test_tfidf_df = pd.concat([X_test_tfidf_df, df_normalized_test.reindex(X_test_tfidf_df.index)], axis=1)
+X_valid_tfidf_df = pd.concat([X_valid_tfidf_df, df_normalized_valid.reindex(X_valid_tfidf_df.index)], axis=1)
 
 #%% count vectorizing
 
@@ -666,6 +673,11 @@ cluster_centers = kmeans.cluster_centers_
 train_preds_summarized = pd.Series(train_preds).value_counts()
 test_preds_summarized = pd.Series(test_preds).value_counts()
 
+
+#%% feature importance
+
+y = np.array(train_preds)
+plot_feature_importance(X_train_tfidf_df, y, 20)
 
 #%% draw barplot of cluster size - function
 
