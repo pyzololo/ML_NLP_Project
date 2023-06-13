@@ -17,7 +17,6 @@ def read_data():
     data = []
     path = '20_newsgroups'
 
-
     # Use os.walk() to iterate through directories and files
     for root, dirs, files in os.walk(path):
         for file in files:
@@ -28,7 +27,6 @@ def read_data():
                 first_blank_line_index = next((i for i, line in enumerate(lines) if line.strip() == ''), None)
 
                 # Extract header content
-                # content = ''.join(lines[:first_blank_line_index]) ###########
                 content = ''.join(lines[:])
 
                 # Use regular expressions to extract header information
@@ -60,13 +58,7 @@ def read_data():
     
     return df
 
-#%% saving lists functions
-
-# this one is not needed anymore i guess
-# def saveList(myList,filename):
-#     # the filename should mention the extension 'npy'
-#     np.save(filename,myList)
-#     print("Saved successfully!")
+#%% saving lists function
     
 import pickle
 
@@ -76,48 +68,38 @@ def saveList2(myList, filename):
         
 #%% loading lists functions
 
-# this one is not needed anymore i guess
-# def loadList(filename):
-#     # the filename should mention the extension 'npy'
-#     tempNumpyArray=np.load(filename, allow_pickle=True)
-#     return tempNumpyArray.tolist()
-
 def loadList2(filename):
     with open(filename, 'rb') as file:
         return pickle.load(file)
 
 #%% parsing files to gain the data
 
-# works a bit slower now, but still within 1 minute
-
 gigatest = read_data()
-
 
 #%% insight into data
 
-# type(gigatest)
-# gigatest.shape
-# gigatest.columns
+type(gigatest)
+gigatest.shape
+gigatest.columns
 
-# for col in gigatest.columns:
-#     print("Column name: " + col)
-#     print(gigatest[col].head())
-#     print()
+for col in gigatest.columns:
+    print("Column name: " + col)
+    print(gigatest[col].head())
+    print()
 
-# # in some texts there are still some attributes (Archive-name, Version, etc.), it may be removed
-# print(gigatest.loc[0,'Text'][0:1000])
-# print(gigatest.loc[1,'Text'][0:1000])
-# print(gigatest.loc[2000,'Text'][0:1000])
+# in some texts there are still some attributes (Archive-name, Version, etc.), it may be removed
+print(gigatest.loc[0,'Text'][0:1000])
+print(gigatest.loc[1,'Text'][0:1000])
+print(gigatest.loc[2000,'Text'][0:1000])
 
 #%% normalize date including timezone
 
-#import re
 from datetime import datetime, timedelta
 from dateutil import parser, tz
 import pytz
 
 def normalize_datetime(date):
-    if not date:  # Sprawdzenie, czy podany argument jest pusty
+    if not date:  
         return None
     
     match = re.search(r"[A-Z]{3}", date)
@@ -146,7 +128,6 @@ def normalize_datetime(date):
     if match:
         try:
             date_obj = datetime.strptime(date, "%a, %d %b %Y %H:%M:%S %Z")
-            # date_obj = parser.parse(date, fuzzy=True, tzinfos=tzinfos)
         except ValueError:
             try:
                 date_obj = parser.parse(date, fuzzy=True, tzinfos=tzinfos)
@@ -158,10 +139,9 @@ def normalize_datetime(date):
         except parser.ParserError:
             raise ValueError("Unknown date format: %s" % date)
     
-    # Przetwarzanie daty bez użycia strefy czasowej
     normalized_date = date_obj.replace(tzinfo=None)
     
-    timezone = pytz.timezone("Europe/London")  # Wybierz odpowiednią strefę czasową
+    timezone = pytz.timezone("Europe/London") 
     normalized_date = timezone.localize(normalized_date)
     
     return normalized_date
@@ -169,7 +149,7 @@ def normalize_datetime(date):
 #%% just normalize date format, does not change timezone
 
 def normalize_date(date):
-    if not date:  # Check if the input argument is empty
+    if not date:
         return None
     
     match = re.search(r"[A-Z]{3}", date)
@@ -205,17 +185,15 @@ for i in range(len(gigatest['Date'])):
         print('The hour is different')
 
 # it turns out, that the function that was supposed to include time zone in 
-# datetime normalization is a piece of crap, it should be probably deleted, but
+# datetime normalization is not working well, it should be probably deleted, but
 # there are more important tasks now
 
 #%% extract day, month, hour to new columns
-
 # we dont use year neither month, because the distribution is very skewed
 
 gigatest['NormalizedDate'] = pd.to_datetime(gigatest['NormalizedDate'])
 
 gigatest['Day'] = gigatest['NormalizedDate'].dt.day
-# it does not take modified hours
 gigatest['Hour'] = gigatest['NormalizedDate'].dt.hour
 gigatest['Minute'] = gigatest['NormalizedDate'].dt.minute
 
@@ -226,7 +204,6 @@ gigatest['Minute'] = gigatest['NormalizedDate'].dt.minute
 #%% sorting data by NormalizedDate
 
 df_sorted = gigatest.loc[np.argsort(gigatest['NormalizedDate']), :].reset_index()
-
 
 #%% languages
 
@@ -251,20 +228,15 @@ english_text_idx = list(set(df_sorted.index.tolist()).difference(set(non_english
 # changing incorrectly detected languages to english
 df_sorted.loc[english_text_idx, 'Language'] = 'en'
 
-#%% translation?
+#%% translation
 
 # pip install deep-translator
 from deep_translator import GoogleTranslator
-
-# # example
-# to_translate = 'I want to translate this text'
-# translated = GoogleTranslator(source='auto', target='de').translate(to_translate)
 
 df_sorted.loc[non_english_idx, 'Text'] = df_sorted.loc[non_english_idx, :].apply(lambda x: GoogleTranslator(source=x.Language, target='en').translate(x.Text), axis=1)
 
 print(df_sorted.loc[non_english_idx[0], 'Text'])
 print(df_sorted.loc[non_english_idx[0], 'Language'])
-
 
 #%% splitting data
 
@@ -277,9 +249,6 @@ train_df, test_df = train_test_split(train_test_df, test_size=0.3, shuffle=False
 train_df.drop('index', axis=1, inplace=True)
 valid_df.drop('index', axis=1, inplace=True)
 test_df.drop('index', axis=1, inplace=True)
-
-# train_test_df['Date']
-# valid_df['Date']
 
 #%% word tokenization
 
@@ -300,7 +269,6 @@ texts_valid = copy.deepcopy(valid_df['Text'])
 texts_train_tokenized = [word_tokenize(text.lower()) for text in texts_train]
 texts_test_tokenized = [word_tokenize(text.lower()) for text in texts_test]
 texts_valid_tokenized = [word_tokenize(text.lower()) for text in texts_valid]
-
 
 #%% extracting extra information
 # before the numbers and special marks are removed, it would be nice to get some statistics from them ...
@@ -390,8 +358,6 @@ alpha_texts_tokenized_valid = [[word for word in text if word.isalpha()] for tex
 
 from nltk.corpus import stopwords
 
-# here english stopwords, but it will not always work properly
-
 texts_tokenized_without_stopwords_train = [[word for word in text if word not in stopwords.words('english')] for text in alpha_texts_tokenized_train]
 texts_tokenized_without_stopwords_test = [[word for word in text if word not in stopwords.words('english')] for text in alpha_texts_tokenized_test]
 texts_tokenized_without_stopwords_valid = [[word for word in text if word not in stopwords.words('english')] for text in alpha_texts_tokenized_valid]
@@ -442,13 +408,10 @@ train_texts = [" ".join(text) for text in texts_lemmatized_spacy_train]
 valid_texts = [" ".join(text) for text in texts_lemmatized_spacy_valid]
 test_texts = [" ".join(text) for text in texts_lemmatized_spacy_test]
 
-# Inicjalizacja TfidfVectorizer
 tfidf_vectorizer = TfidfVectorizer()
 
-# Trenowanie vectorizera na danych treningowych
 X_train_tfidf = tfidf_vectorizer.fit_transform(train_texts)
 
-# Transformacja danych walidacyjnych i testowych
 X_valid_tfidf = tfidf_vectorizer.transform(valid_texts)
 X_test_tfidf = tfidf_vectorizer.transform(test_texts)
 
@@ -463,27 +426,11 @@ X_test_tfidf_df = pd.DataFrame(X_test_tfidf.todense().A, columns=tfidf_vectorize
 # X_valid_tfidf_df = pd.DataFrame(X_valid_tfidf.todense().A, columns=tfidf_vectorizer.get_feature_names())
 # X_test_tfidf_df = pd.DataFrame(X_test_tfidf.todense().A, columns=tfidf_vectorizer.get_feature_names())
 
-
 #%% adding punctuation marks statistics 
 
 X_train_tfidf_df = pd.concat([X_train_tfidf_df, df_normalized_train.reindex(X_train_tfidf_df.index)], axis=1)
 X_test_tfidf_df = pd.concat([X_test_tfidf_df, df_normalized_test.reindex(X_test_tfidf_df.index)], axis=1)
 X_valid_tfidf_df = pd.concat([X_valid_tfidf_df, df_normalized_valid.reindex(X_valid_tfidf_df.index)], axis=1)
-
-#%% count vectorizing
-
-# from sklearn.feature_extraction.text import CountVectorizer
-
-# train_texts = [" ".join(text) for text in texts_lemmatized_spacy_train]
-# valid_texts = [" ".join(text) for text in texts_lemmatized_spacy_valid]
-# test_texts = [" ".join(text) for text in texts_lemmatized_spacy_test]
-
-# count_vectorizer = CountVectorizer()
-
-# X_train_count = count_vectorizer.fit_transform(train_texts)
-
-# X_valid_count = count_vectorizer.transform(valid_texts)
-# X_test_count = count_vectorizer.transform(test_texts)
 
 #%% merging data together
 
@@ -674,7 +621,7 @@ train_preds_summarized = pd.Series(train_preds).value_counts()
 test_preds_summarized = pd.Series(test_preds).value_counts()
 
 
-#%% feature importance
+#%% feature importance (works quite long)
 
 y = np.array(train_preds)
 plot_feature_importance(X_train_tfidf_df, y, 20)
@@ -683,8 +630,8 @@ plot_feature_importance(X_train_tfidf_df, y, 20)
 
 def plot_cluster_size_from_series(series, title):
     plt.bar(series.index, series.values)
-    plt.xlabel('Values')
-    plt.ylabel('Count')
+    plt.xlabel('Nr klastra')
+    plt.ylabel('Liczność')
     plt.title(title)
     plt.show()
     
@@ -692,6 +639,8 @@ def plot_cluster_size_from_series(series, title):
 
 plot_cluster_size_from_series(train_preds_summarized, 'Klastry KMeans zbiór treningowy')
 plot_cluster_size_from_series(test_preds_summarized, 'Klastry KMeans zbiór testowy')
+
+# similar results for train and test
 
 #%% print cluster contents - function
 
@@ -713,12 +662,16 @@ def print_cluster_contents(df, preds):
         print(f"CLUSTER NO. {i}")
         indexes = np.where(preds == i)
         directories_inside = directories.iloc[indexes]
-        print(directories_inside.value_counts())
+        
+        for index, count in directories_inside.value_counts().head(3).items():
+            print(index, count)
+        
+        # print(directories_inside.value_counts().head(3))
         print()
 
-#%% sandbox
+#%% idk TODO
 
-my_indexes = np.where(train_preds == 9)
+my_indexes = np.where(train_preds == 11)
 my_df = X_train_tfidf_df.iloc[my_indexes]
 
 y = [0 for i in range(len(train_preds))]
@@ -735,41 +688,29 @@ plot_feature_importance(X_train_tfidf_df, y, 10)
 print_cluster_contents(train_df, train_preds)
 print_cluster_contents(test_df, test_preds)
 
+# examining number of clusters:
 # bad: 9, 11, 13, 15, 16
 # ok: 10, 12, 14
 # best: 12
 
-# NOTE 
-# a lot of all directories end up in last cluster
-# we should tweak the model parameters
+#%% check specific text form specific cluster (for train set)
 
-#%% another sandbox
-
-indexes = np.where(train_preds == 5)
+indexes = np.where(train_preds == 5) # choose cluster
 temp = train_df.iloc[indexes]
 my_directories = temp['Directory']
 my_texts = temp['Text']
 
-my_index = 223
+my_index = 223 # choose text
 print('\n'.join(['\t' + line for line in my_texts.iloc[my_index].split('\n')]))
 print(my_directories.iloc[my_index])
 
 
 
-#0 mid east
-#1 ateizm chrzecijaństwo duży
-#2 hardware
-#3 kryptologia
-#4 samochody
-#5 hardware - sprzedaż
-
-#11 q-a
-
-#%% some GPT stuff
+#%% get top keywords from each cluster
 
 cluster_labels = kmeans.labels_
 
-data = train_texts
+data = test_texts
 
 cluster_names = {}
 
@@ -834,7 +775,7 @@ test_preds_summarized_medoids = pd.Series(y_kmedoids_test).value_counts()
 plot_cluster_size_from_series(train_preds_summarized_medoids, 'Klastry K-Medoids zbiór treningowy')
 plot_cluster_size_from_series(test_preds_summarized_medoids, 'Klastry K-Medoids zbiór testowy')
 
-#%% Mini Batch
+#%% Mini Batch (unused)
 
 from sklearn import cluster
 
@@ -847,24 +788,24 @@ centers = miniBatchKmeans.cluster_centers_
 train_preds_summarized_mbatch = pd.Series(y_mbatch_train).value_counts()
 test_preds_summarized_mbatch = pd.Series(y_mbatch_test).value_counts()
 
-#%% Mini Batch - cluster size
+#%% Mini Batch - cluster size (unused)
 
 plot_cluster_size_from_series(train_preds_summarized_mbatch, 'Klastry Mini Batch zbiór treningowy')
 plot_cluster_size_from_series(test_preds_summarized_mbatch, 'Klastry Mini Batch zbiór testowy')
 
-#%% printing cluster contents Mini BAtch
+#%% printing cluster contents Mini BAtch (unused)
 
 print_cluster_contents(train_df, y_mbatch_train)
 print_cluster_contents(test_df, y_mbatch_test)
 
-#%% DBSCAN
+#%% DBSCAN (unused)
 
 # here the eps value should be optimized
 dbs = cluster.DBSCAN(n_jobs=-1)
 dbs.fit(X_train_tfidf_df)
 dbs.labels_
 
-#%% GMM
+#%% GMM (unused)
 
 from sklearn import mixture
 
@@ -872,7 +813,7 @@ gmm = mixture.GaussianMixture(n_components=8, random_state=0)
 gmm.fit(X_train_tfidf_df)
 # problems with memory
 
-#%% dendrogram
+#%% dendrogram (unused)
 
 from scipy.cluster.hierarchy import linkage, dendrogram
 
@@ -910,7 +851,7 @@ plt.show()
 
 
 
-#%% PCA
+#%% PCA (unused)
 
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
@@ -932,8 +873,7 @@ reduced_cluster_centers = pca.transform(cluster_centers)
 fig = px.scatter_3d(reduced_features)
 fig.show()
 
-#%% PCA 3D
-
+#%% PCA 3D (unused)
 import plotly.express as px
 
 # Redukcja wymiarowości do 3D
