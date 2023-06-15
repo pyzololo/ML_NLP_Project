@@ -3,16 +3,34 @@
 import pandas as pd
 import numpy as np
 import re
-import time
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.tree import DecisionTreeClassifier
+import os
+import pickle
+from datetime import datetime
+from dateutil import parser, tz
+import pytz
+from langdetect import detect
+from deep_translator import GoogleTranslator
+from sklearn.model_selection import train_test_split
+from nltk.tokenize import word_tokenize
+import copy
+from sklearn.preprocessing import StandardScaler
+from nltk.corpus import stopwords
+import spacy
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score 
+from sklearn.metrics import calinski_harabasz_score
+from sklearn.metrics import davies_bouldin_score
+from sklearn_extra.cluster import KMedoids
+from sklearn import cluster
+from sklearn import mixture
 
 #%% reading data
 
 def read_data():
-    
-    import os
 
     data = []
     path = '20_newsgroups'
@@ -60,8 +78,6 @@ def read_data():
 
 #%% saving lists function
     
-import pickle
-
 def saveList2(myList, filename):
     with open(filename, 'wb') as file:
         pickle.dump(myList, file)
@@ -74,29 +90,20 @@ def loadList2(filename):
 
 #%% parsing files to gain the data
 
-gigatest = read_data()
+df_raw = read_data()
 
 #%% insight into data
 
-type(gigatest)
-gigatest.shape
-gigatest.columns
+type(df_raw)
+df_raw.shape
+df_raw.columns
 
-for col in gigatest.columns:
+for col in df_raw.columns:
     print("Column name: " + col)
-    print(gigatest[col].head())
+    print(df_raw[col].head())
     print()
 
-# in some texts there are still some attributes (Archive-name, Version, etc.), it may be removed
-print(gigatest.loc[0,'Text'][0:1000])
-print(gigatest.loc[1,'Text'][0:1000])
-print(gigatest.loc[2000,'Text'][0:1000])
-
 #%% normalize date including timezone
-
-from datetime import datetime, timedelta
-from dateutil import parser, tz
-import pytz
 
 def normalize_datetime(date):
     if not date:  
@@ -173,41 +180,31 @@ def normalize_date(date):
 
 #%% adding NormalizedDate column in order to sort data before splitting train-test
 
-gigatest['NormalizedDate'] = gigatest['Date'].apply(lambda date: normalize_datetime(date))
-gigatest['Date'] = gigatest['Date'].apply(lambda date: normalize_date(date))
+df_raw['NormalizedDate'] = df_raw['Date'].apply(lambda date: normalize_datetime(date))
+df_raw['Date'] = df_raw['Date'].apply(lambda date: normalize_date(date))
 
 #%% checking if the hour is different 
 
-for i in range(len(gigatest['Date'])):
-    hour1 = pd.to_datetime(gigatest['NormalizedDate'].loc[i]).to_pydatetime()
-    hour2 = gigatest['Date'].loc[i]
+for i in range(len(df_raw['Date'])):
+    hour1 = pd.to_datetime(df_raw['NormalizedDate'].loc[i]).to_pydatetime()
+    hour2 = df_raw['Date'].loc[i]
     if hour1.hour != hour2.hour:
         print('The hour is different')
-
-# it turns out, that the function that was supposed to include time zone in 
-# datetime normalization is not working well, it should be probably deleted, but
-# there are more important tasks now
 
 #%% extract day, month, hour to new columns
 # we dont use year neither month, because the distribution is very skewed
 
-gigatest['NormalizedDate'] = pd.to_datetime(gigatest['NormalizedDate'])
+df_raw['NormalizedDate'] = pd.to_datetime(df_raw['NormalizedDate'])
 
-gigatest['Day'] = gigatest['NormalizedDate'].dt.day
-gigatest['Hour'] = gigatest['NormalizedDate'].dt.hour
-gigatest['Minute'] = gigatest['NormalizedDate'].dt.minute
-
-# np.unique(gigatest['Day'].value_counts().index) # complete set
-# len(np.unique(gigatest['Hour'].value_counts().index)) # complete
-# len(np.unique(gigatest['Minute'].value_counts().index)) # complete
+df_raw['Day'] = df_raw['NormalizedDate'].dt.day
+df_raw['Hour'] = df_raw['NormalizedDate'].dt.hour
+df_raw['Minute'] = df_raw['NormalizedDate'].dt.minute
 
 #%% sorting data by NormalizedDate
 
-df_sorted = gigatest.loc[np.argsort(gigatest['NormalizedDate']), :].reset_index()
+df_sorted = df_raw.loc[np.argsort(df_raw['NormalizedDate']), :].reset_index()
 
 #%% languages
-
-from langdetect import detect
 
 def detect_language(t):
     try:
@@ -216,10 +213,6 @@ def detect_language(t):
         return 'other'
     
 df_sorted['Language'] = df_sorted['Text'].apply(lambda t: detect_language(t))
-
-non_english_map = {57:'fr', 882: 'arabskie jakies', 1472: 'dutch', 1475: 'dutch',
-                   10840: 'jakis szwedzki', 12998: 'szwedzki', 12764: 'Sweden',
-                   15704: 'de'}
 
 non_english_idx = [57, 882, 1472, 1475, 10840, 12998, 12764, 15704]
 
@@ -230,17 +223,12 @@ df_sorted.loc[english_text_idx, 'Language'] = 'en'
 
 #%% translation
 
-# pip install deep-translator
-from deep_translator import GoogleTranslator
-
 df_sorted.loc[non_english_idx, 'Text'] = df_sorted.loc[non_english_idx, :].apply(lambda x: GoogleTranslator(source=x.Language, target='en').translate(x.Text), axis=1)
 
 print(df_sorted.loc[non_english_idx[0], 'Text'])
 print(df_sorted.loc[non_english_idx[0], 'Language'])
 
 #%% splitting data
-
-from sklearn.model_selection import train_test_split
 
 train_test_df, valid_df = train_test_split(df_sorted, test_size=0.3, shuffle=False)
 train_df, test_df = train_test_split(train_test_df, test_size=0.3, shuffle=False)
@@ -252,26 +240,19 @@ test_df.drop('index', axis=1, inplace=True)
 
 #%% word tokenization
 
-from nltk.tokenize import word_tokenize
-import copy
-
 # extracting texts into variables
 texts_train = copy.deepcopy(train_df['Text'])
 texts_test = copy.deepcopy(test_df['Text'])
 texts_valid = copy.deepcopy(valid_df['Text'])
-
-# # finds words, numbers and emails
-# pattern = '([a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$|\d+|\w+)'
-
-# in both cases results are similar
 
 # tokenizing texts
 texts_train_tokenized = [word_tokenize(text.lower()) for text in texts_train]
 texts_test_tokenized = [word_tokenize(text.lower()) for text in texts_test]
 texts_valid_tokenized = [word_tokenize(text.lower()) for text in texts_valid]
 
-#%% extracting extra information
+#%% extracting extra information (not used)
 # before the numbers and special marks are removed, it would be nice to get some statistics from them ...
+# it should be done in a different way
 
 def count_punctuation_marks(tokens, marks):
     count = 0
@@ -336,16 +317,12 @@ df_additional_train = get_all_marks_statistics(texts_train_tokenized)
 df_additional_test = get_all_marks_statistics(texts_test_tokenized)
 df_additional_valid = get_all_marks_statistics(texts_valid_tokenized)
 
-
-#%% standarization
-
-from sklearn.preprocessing import StandardScaler
+#%% standarization (not used)
 
 scaler = StandardScaler()
 df_normalized_train = pd.DataFrame(scaler.fit_transform(df_additional_train), columns = df_additional_train.columns)
 df_normalized_test = pd.DataFrame(scaler.fit_transform(df_additional_test), columns = df_additional_test.columns)
 df_normalized_valid = pd.DataFrame(scaler.fit_transform(df_additional_valid), columns = df_additional_valid.columns)
-
 
 #%% getting only alphabetic marks
 
@@ -353,10 +330,7 @@ alpha_texts_tokenized_train = [[word for word in text if word.isalpha()] for tex
 alpha_texts_tokenized_test = [[word for word in text if word.isalpha()] for text in texts_test_tokenized]
 alpha_texts_tokenized_valid = [[word for word in text if word.isalpha()] for text in texts_valid_tokenized]
 
-
 #%% removing stop words
-
-from nltk.corpus import stopwords
 
 texts_tokenized_without_stopwords_train = [[word for word in text if word not in stopwords.words('english')] for text in alpha_texts_tokenized_train]
 texts_tokenized_without_stopwords_test = [[word for word in text if word not in stopwords.words('english')] for text in alpha_texts_tokenized_test]
@@ -374,9 +348,7 @@ texts_tokenized_without_stopwords_train = loadList2("texts_tokenized_without_sto
 texts_tokenized_without_stopwords_test = loadList2("texts_tokenized_without_stopwords_test.pickle")
 texts_tokenized_without_stopwords_valid = loadList2("texts_tokenized_without_stopwords_valid.pickle")
 
-#%% lemmatizing - slower, but better
-
-import spacy
+#%% lemmatizing
 
 nlp = spacy.load('en_core_web_sm')
 
@@ -402,8 +374,6 @@ texts_lemmatized_spacy_valid = loadList2("texts_lemmatized_spacy_valid.pickle")
 
 #%% tfidf vectorization
 
-from sklearn.feature_extraction.text import TfidfVectorizer
-
 train_texts = [" ".join(text) for text in texts_lemmatized_spacy_train]
 valid_texts = [" ".join(text) for text in texts_lemmatized_spacy_valid]
 test_texts = [" ".join(text) for text in texts_lemmatized_spacy_test]
@@ -426,24 +396,19 @@ X_test_tfidf_df = pd.DataFrame(X_test_tfidf.todense().A, columns=tfidf_vectorize
 # X_valid_tfidf_df = pd.DataFrame(X_valid_tfidf.todense().A, columns=tfidf_vectorizer.get_feature_names())
 # X_test_tfidf_df = pd.DataFrame(X_test_tfidf.todense().A, columns=tfidf_vectorizer.get_feature_names())
 
-#%% adding punctuation marks statistics 
+#%% adding punctuation marks statistics (not used)
 
-X_train_tfidf_df = pd.concat([X_train_tfidf_df, df_normalized_train.reindex(X_train_tfidf_df.index)], axis=1)
-X_test_tfidf_df = pd.concat([X_test_tfidf_df, df_normalized_test.reindex(X_test_tfidf_df.index)], axis=1)
-X_valid_tfidf_df = pd.concat([X_valid_tfidf_df, df_normalized_valid.reindex(X_valid_tfidf_df.index)], axis=1)
+# X_train_tfidf_df = pd.concat([X_train_tfidf_df, df_normalized_train.reindex(X_train_tfidf_df.index)], axis=1)
+# X_test_tfidf_df = pd.concat([X_test_tfidf_df, df_normalized_test.reindex(X_test_tfidf_df.index)], axis=1)
+# X_valid_tfidf_df = pd.concat([X_valid_tfidf_df, df_normalized_valid.reindex(X_valid_tfidf_df.index)], axis=1)
 
-#%% merging data together
+#%% merging data together (not used)
 
 # # for now only X_train_tfidf_df can be used, but some additional columns may be added after some operations (mapping, standarization)
 # chosen_columns = ['From', 'Subject', 'Organization', 'Lines', 'Day', 'Hour', 'Minute', 'Language']
 # X_train_tfidf_df = pd.concat([train_df[chosen_columns], X_train_tfidf_df], axis=1)
 
-#%% number of clusters
-
-from sklearn.cluster import KMeans
-from sklearn.metrics import silhouette_score 
-from sklearn.metrics import calinski_harabasz_score
-from sklearn.metrics import davies_bouldin_score
+#%% detecting number of clusters
 
 def metrics_plots(X, max_k=10):
     score = []
@@ -511,21 +476,9 @@ def plot_feature_importance(X, y, limit = 10):
     plt.xlabel('FEATURE IMPORTANCE')
     plt.ylabel('FEATURE NAMES')
     
-#%% prediction results
-
-def check_model_properties(y_true, y_predicted):
-    from sklearn.metrics import accuracy_score, f1_score
-    r = 4
-    print('accuracy_score: ', round(accuracy_score(y_true, y_predicted), r))
-    print('f1_score_micro: ', round(f1_score(y_true, y_predicted, average = 'micro'), r))
-    print('f1_score_macro: ', round(f1_score(y_true, y_predicted, average = 'macro'), r))
-    print('f1_score_weighted: ', round(f1_score(y_true, y_predicted, average = 'weighted'), r))
-    
-#%% clustering scores (from labs)
+#%% clustering scores (from labs) (not used - too much time consuming)
 
 def count_clustering_scores(X, cluster_num, model, score_fun):
-    # Napiszmy tę funkcje tak ogólnie, jak to możliwe. 
-    # Zwróćcie uwagę na przekazanie obiektów typu callable: model i score_fun.
     if isinstance(cluster_num, int):
         cluster_num_iter = [cluster_num]
     else:
@@ -602,8 +555,7 @@ def summary(X, label):
     return S
 
 #%% KMeans
-
-from sklearn.cluster import KMeans
+# final model
 
 n_clusters = 12
 
@@ -620,8 +572,7 @@ cluster_centers = kmeans.cluster_centers_
 train_preds_summarized = pd.Series(train_preds).value_counts()
 test_preds_summarized = pd.Series(test_preds).value_counts()
 
-
-#%% feature importance (works quite long)
+#%% feature importance
 
 y = np.array(train_preds)
 plot_feature_importance(X_train_tfidf_df, y, 20)
@@ -665,22 +616,7 @@ def print_cluster_contents(df, preds):
         
         for index, count in directories_inside.value_counts().head(3).items():
             print(index, count)
-        
-        # print(directories_inside.value_counts().head(3))
         print()
-
-#%% idk TODO
-
-my_indexes = np.where(train_preds == 11)
-my_df = X_train_tfidf_df.iloc[my_indexes]
-
-y = [0 for i in range(len(train_preds))]
-y = np.array(y)
-y[my_indexes[0].tolist()] = 1
-
-plot_feature_importance(my_df, np.full(len(my_df), 9), 10)
-
-plot_feature_importance(X_train_tfidf_df, y, 10)
 
 #%% some insight into result
 # checking which directories end up in each cluster
@@ -695,16 +631,14 @@ print_cluster_contents(test_df, test_preds)
 
 #%% check specific text form specific cluster (for train set)
 
-indexes = np.where(train_preds == 5) # choose cluster
-temp = train_df.iloc[indexes]
-my_directories = temp['Directory']
-my_texts = temp['Text']
+# indexes = np.where(train_preds == 5) # choose cluster
+# temp = train_df.iloc[indexes]
+# my_directories = temp['Directory']
+# my_texts = temp['Text']
 
-my_index = 223 # choose text
-print('\n'.join(['\t' + line for line in my_texts.iloc[my_index].split('\n')]))
-print(my_directories.iloc[my_index])
-
-
+# my_index = 223 # choose text
+# print('\n'.join(['\t' + line for line in my_texts.iloc[my_index].split('\n')]))
+# print(my_directories.iloc[my_index])
 
 #%% get top keywords from each cluster
 
@@ -730,40 +664,13 @@ for i in range(12):
 for cluster_label, cluster_name in cluster_names.items():
     print(f"Cluster {cluster_label}: {cluster_name}")
 
-#%% 
-
-plot_feature_importance(X_train_tfidf_df, train_preds, 10)
-# looks good
-
-#%%
-
-print(f'Minimal distance between clusters = {min_interclust_dist(X_train_tfidf_df.to_numpy(), train_preds):.2f}.')
-print(f'Average distance between points in the same class = '
-      f'{mean_inclust_dist(X_train_tfidf, train_preds):.2f}.')
-print(f'Standard deviation of distance between points in the same class = '
-      f'{std_dev_of_inclust_dist(X_train_tfidf, train_preds):.3f}.')
-print(f'Average distance to cluster center = '
-      f'{mean_dist_to_center(X_train_tfidf, train_preds):.2f}.')
-
-# it is better to use this instead
-# S_kmeans = summary(X_train_tfidf_df, train_preds)
-# print(S_kmeans)
-
 #%% K-Medoids
-
-from sklearn_extra.cluster import KMedoids
-
-st = time.time()
 
 kmedoids = KMedoids(n_clusters=9, random_state=0)
 kmedoids.fit(X_train_tfidf_df)
 y_kmedoids_train = kmedoids.predict(X_train_tfidf_df)
 y_kmedoids_test = kmedoids.predict(X_test_tfidf_df)
 centers = kmedoids.cluster_centers_
-
-et = time.time()
-elapsed_time = et - st
-print(elapsed_time)
 
 train_preds_summarized_medoids = pd.Series(y_kmedoids_train).value_counts()
 test_preds_summarized_medoids = pd.Series(y_kmedoids_test).value_counts()
@@ -776,8 +683,6 @@ plot_cluster_size_from_series(train_preds_summarized_medoids, 'Klastry K-Medoids
 plot_cluster_size_from_series(test_preds_summarized_medoids, 'Klastry K-Medoids zbiór testowy')
 
 #%% Mini Batch (unused)
-
-from sklearn import cluster
 
 miniBatchKmeans = cluster.MiniBatchKMeans(n_clusters=9, random_state=0)
 miniBatchKmeans.fit(X_train_tfidf_df)
@@ -807,88 +712,48 @@ dbs.labels_
 
 #%% GMM (unused)
 
-from sklearn import mixture
-
 gmm = mixture.GaussianMixture(n_components=8, random_state=0)
 gmm.fit(X_train_tfidf_df)
 # problems with memory
 
-#%% dendrogram (unused)
+#%% dendrogram (unused) - too much data
 
-from scipy.cluster.hierarchy import linkage, dendrogram
+# from scipy.cluster.hierarchy import linkage, dendrogram
 
-# method parameter should be checked
-Z = linkage(X_train_tfidf_df, method='single')
+# # method parameter should be checked
+# Z = linkage(X_train_tfidf_df, method='single')
 
-saveList2(Z, "Z.pickle")
+# saveList2(Z, "Z.pickle")
 
-Z = loadList2("Z.pickle")
+# Z = loadList2("Z.pickle")
 
-# plt.figure(figsize=(10, 5), dpi= 200, facecolor='w', edgecolor='k')
-#plt.figure(facecolor='w', edgecolor='k')
+# # plt.figure(figsize=(10, 5), dpi= 200, facecolor='w', edgecolor='k')
+# #plt.figure(facecolor='w', edgecolor='k')
 
-# this line restarts the kernel
-dendrogram(Z)
-plt.show()
-
-#%% elbow
-
-from sklearn.cluster import KMeans
-
-inertia = []
-K = range(1,20)
-for k in K:
-    kmeanModel = KMeans(n_clusters=k)
-    kmeanModel.fit(X_train)
-    inertia.append(kmeanModel.inertia_)
-
-plt.figure(figsize=(16,8))
-plt.plot(K, inertia, 'bx-')
-plt.xlabel('k')
-plt.ylabel('Inertia')
-plt.title('The Elbow Method showing the optimal k')
-plt.show()
-
-
+# # this line restarts the kernel
+# dendrogram(Z)
+# plt.show()
 
 #%% PCA (unused)
 
-from sklearn.decomposition import PCA
-import matplotlib.pyplot as plt
-import plotly.express as px
+# from sklearn.decomposition import PCA
+# import matplotlib.pyplot as plt
+# import plotly.express as px
 
-pca = PCA(n_components=3)
-reduced_features = pca.fit_transform(X_train.toarray())
+# pca = PCA(n_components=3)
+# X_train = ...
+# reduced_features = pca.fit_transform(X_train.toarray())
 
-df_pca = pd.DataFrame(data = reduced_features, columns = ['principal component 1', 'principal component 2', 'principal component 3'])
+# df_pca = pd.DataFrame(data = reduced_features, columns = ['principal component 1', 'principal component 2', 'principal component 3'])
 
-# plt.scatter(reduced_features[:,0], reduced_features[:,1], c=train_preds)
-fig = px.scatter_3d(reduced_features[:,0], reduced_features[:,1], reduced_features[:,2])
+# # plt.scatter(reduced_features[:,0], reduced_features[:,1], c=train_preds)
+# fig = px.scatter_3d(reduced_features[:,0], reduced_features[:,1], reduced_features[:,2])
 
-reduced_cluster_centers = pca.transform(cluster_centers)
+# reduced_cluster_centers = pca.transform(cluster_centers)
 
-# plt.scatter(reduced_cluster_centers[:, 0], reduced_cluster_centers[:,1], marker='x', s=150, c='b')
-# plt.show()
+# # plt.scatter(reduced_cluster_centers[:, 0], reduced_cluster_centers[:,1], marker='x', s=150, c='b')
+# # plt.show()
 
-fig = px.scatter_3d(reduced_features)
-fig.show()
-
-#%% PCA 3D (unused)
-import plotly.express as px
-
-# Redukcja wymiarowości do 3D
-pca = PCA(n_components=3)
-X_pca = pca.fit_transform(X_train.toarray())
-
-# Konwersja do DataFrame
-df_pca = pd.DataFrame(data = X_pca, columns = ['principal component 1', 'principal component 2', 'principal component 3'])
-
-# Dodanie informacji o klastrze do DataFrame
-kmeans = KMeans(n_clusters=10) # załóżmy, że optymalna liczba klastrów wynosi 3
-y_kmeans = kmeans.fit_predict(X_pca)
-df_pca['Cluster'] = y_kmeans
-
-# Tworzenie interaktywnego wykresu 3D
-fig = px.scatter_3d(df_pca, x='principal component 1', y='principal component 2', z='principal component 3', color='Cluster')
-fig.show()
+# fig = px.scatter_3d(reduced_features)
+# fig.show()
 

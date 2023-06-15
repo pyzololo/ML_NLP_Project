@@ -1,0 +1,27 @@
+import pandas as pd
+import numpy as np
+import re
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.tree import DecisionTreeClassifier
+import os
+import pickle
+from datetime import datetime
+from dateutil import parser, tz
+import pytz
+from langdetect import detect
+from deep_translator import GoogleTranslator
+from sklearn.model_selection import train_test_split
+from nltk.tokenize import word_tokenize
+import copy
+from sklearn.preprocessing import StandardScaler
+from nltk.corpus import stopwords
+import spacy
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score 
+from sklearn.metrics import calinski_harabasz_score
+from sklearn.metrics import davies_bouldin_score
+from sklearn_extra.cluster import KMedoids
+from sklearn import cluster
+from sklearn import mixture
